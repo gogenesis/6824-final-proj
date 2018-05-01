@@ -18,7 +18,7 @@ type FileServer struct {
 // servers[] contains the ports of the set of
 // servers that will cooperate via Raft to form the fault-tolerant file service.
 // me is the index of the current server in servers[].
-func StartFileServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister) {
+func StartFileServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister, maxRaftState int) *FileServer {
 	panic("TODO")
 }
 
@@ -27,4 +27,9 @@ func (fs *FileServer) Kill() {
 	panic("TODO")
 }
 
-// TODO copy in stuff from David's lab 3
+// Get a pointer to this server's Raft instance. FOR TESTING PURPOSES ONLY.
+func (fs *FileServer) raft() *raft.Raft {
+	panic("TODO")
+}
+
+// TODO copy in stuff from David's lab 3 when Taylor is done with lab 3B

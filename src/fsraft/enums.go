@@ -22,7 +22,7 @@ const (
 type SeekMode int
 
 const (
-	AfterBeginning SeekMode = iota // Seek from the beginning of the file.
-	AfterCurrent                   // Seek relative to the current position.
-	AfterEnd                       // Seek after the end of the file.NotOpen
+	FromBeginning SeekMode = iota // Seek from the beginning of the file.
+	FromCurrent                   // Seek relative to the current position.
+	FromEnd                       // Seek after the end of the file.
 )

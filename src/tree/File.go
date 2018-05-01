@@ -41,9 +41,9 @@ func (file *File) Offset() int {
 
 // Mutators ===================================================================
 // Adjusts the file offset for this file and returns the new offset.
-// If base is AfterBeginning, sets the offset to offset bytes.
-// If base is AfterCurrent, sets the offset to its current location plus offset.
-// If base is AfterEnd, sets the offset to the size of the file plus offset.
+// If base is FromBeginning, sets the offset to offset bytes.
+// If base is FromCurrent, sets the offset to its current location plus offset.
+// If base is FromEnd, sets the offset to the size of the file plus offset.
 // The seek() function shall allow the file offset to be set beyond the end of the existing data in the file.
 // If data is later written at this point, subsequent reads of data in the gap shall
 // return bytes with the value 0 until data is actually written into the gap.

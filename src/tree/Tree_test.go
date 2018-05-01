@@ -63,7 +63,7 @@ func TestTreePanicsOnInvalidRootPath(t *testing.T) {
 	}
 	for invalidPath, errorMessage := range invalidPathsToMessages {
 		func(invalidPath, errorMessage string) {
-			// Error expected, so defer recover
+			// error expected, so defer recover
 			defer func() { recover() }()
 			// Should panic, otherwise, fail with the message
 			createEmptyTree(invalidPath)
