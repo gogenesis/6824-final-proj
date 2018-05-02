@@ -16,7 +16,8 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
    TestOpenROClose4,
    TestOpenRWClose,
    TestOpenRWClose4, //XXX generation marker
-   TestBasicReadWrite,
+   TestReadWriteBasic,
+   TestReadWriteBasic4,
 }
 
 func TestOpenCloseBasic(t *testing.T, fs FileSystem) {
@@ -140,13 +141,11 @@ func TestOpenRWClose4 (t *testing.T, fs FileSystem) {
    assertFail(t, success)
 }
 
-func TestBasicReadWrite(t *testing.T, fs FileSystem) {
-   fileName := "/foo.txt" // arbitrarily
-   contents := "bar"      // also arbitrarily
+func HelpReadWrite(t *testing.T, fs FileSystem, path string, contents string) {
    bytes := []byte(contents)
    numBytes := len(bytes)
 
-   fd, err := fs.Open(fileName, ReadWrite, Create)
+   fd, err := fs.Open(path, ReadWrite, Create)
    assertNoErrorFail(t, err)
    assertValidFD(t, fd)
 
@@ -166,7 +165,18 @@ func TestBasicReadWrite(t *testing.T, fs FileSystem) {
    success, err := fs.Close(fd)
    assertNoErrorFail(t, err)
    assertFail(t, success)
-
 }
+
+func TestReadWriteBasic(t *testing.T, fs FileSystem) {
+   HelpReadWrite(t, fs, "/foo.txt", "bar") //TODO randomize contents
+}
+
+func TestReadWriteBasic4(t *testing.T, fs FileSystem) {
+   HelpReadWrite(t, fs, "/foo1.txt", "bar1") //TODO randomize contents
+   HelpReadWrite(t, fs, "/foo2.txt", "bar2") //TODO randomize contents
+   HelpReadWrite(t, fs, "/foo3.txt", "bar3") //TODO randomize contents
+   HelpReadWrite(t, fs, "/foo4.txt", "bar4") //TODO randomize contents
+}
+
 
 // TODO more unit tests.
