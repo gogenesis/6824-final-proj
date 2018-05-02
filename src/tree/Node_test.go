@@ -6,10 +6,10 @@ import (
 	"time"
 )
 
-// Returns a small tree that will be useful for testing.
-// The Tree is mounted at "/root" and contains one empty file
+// Returns a small MemoryFS that will be useful for testing.
+// The MemoryFS is mounted at "/root" and contains one empty file
 // in the top-level directory named "foo".
-func getSmallTree() Tree {
+func getSmallTree() MemoryFS {
 	tree := createEmptyTree("/root")
 	root := tree.GetRootDir()
 	root.Open(WriteOnly)
@@ -19,8 +19,8 @@ func getSmallTree() Tree {
 	return tree
 }
 
-// Returns a Tree that will be useful for testing.
-// The Tree is mounted at "/root" and looks like this:
+// Returns a MemoryFS that will be useful for testing.
+// The MemoryFS is mounted at "/root" and looks like this:
 // /root/
 //   |- fileA
 //   |- child/
@@ -28,7 +28,7 @@ func getSmallTree() Tree {
 //   |    |    |- fileB
 //   |    |    |- fileC
 // All files are empty.
-func getLargeTree() Tree {
+func getLargeTree() MemoryFS {
 	tree := createEmptyTree("/root")
 
 	root := tree.GetRootDir()
@@ -48,8 +48,8 @@ func getLargeTree() Tree {
 	return tree
 }
 
-// Create a small tree, open the root dir and the file, and return them all.
-func getSmallTreeParts() (Tree, Directory, File) {
+// Create a small MemoryFS, open the root dir and the file, and return them all.
+func getSmallTreeParts() (MemoryFS, Directory, File) {
 	tree := getSmallTree()
 	root := tree.GetRootDir()
 	root.Open(ReadWrite)

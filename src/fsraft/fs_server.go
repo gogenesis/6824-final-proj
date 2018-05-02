@@ -6,10 +6,9 @@ import (
 )
 
 // A file server built on Raft.
-// This is similar to the kvserver, but stores a Tree of files (see package "tree") instead of a map[string]string.
-// This filesystem is linearizable; a Read() that begins after a Write() finishes is guaranteed to return the new data.
-// Many enumerations are referenced in this file, like OpenMode and CloseError. So as to not clutter this file,
-// those are stored in enums.go.
+// This is similar to the kvserver, but stores an in-memory FileSystem (see package "MemoryFS")
+// instead of a map[string]string. This filesystem is linearizable; a Read() that
+// begins after a Write() finishes is guaranteed to return the new data.
 type FileServer struct {
 	// TODO
 }

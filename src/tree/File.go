@@ -21,9 +21,7 @@ type File struct {
 // Observers ==================================================================
 
 // Return the size of this file, in bytes.
-func (file *File) size() int {
-	panic("TODO")
-}
+//func (file *File) size() int { panic("TODO") }
 
 // Reads up to count bytes into the target byte[] and returns the number of bytes read.
 // The bytes read is the greatest of {count, len(target), the number of bytes between offset and the end of the file}.
@@ -76,7 +74,7 @@ func (file *File) CreateTime() time.Time {
 	return file.Inode.CreateTime()
 }
 
-func (file *File) Tree() Tree {
+func (file *File) Tree() MemoryFS {
 	return file.Inode.Tree()
 }
 

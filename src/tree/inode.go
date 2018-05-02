@@ -20,7 +20,7 @@ func (in *Inode) CreateTime() time.Time {
 	panic("TODO")
 }
 
-func (in *Inode) Tree() Tree {
+func (in *Inode) Tree() MemoryFS {
 	panic("TODO")
 }
 

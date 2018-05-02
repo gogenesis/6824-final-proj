@@ -12,7 +12,7 @@ type Directory struct {
 // Constructors ================================================================
 
 // Directory has no zero-argument constructor.
-// instead, create a root Directory by creating a Tree and then create children of that root Directory.
+// instead, create a root Directory by creating a MemoryFS and then create children of that root Directory.
 
 // Creates a Directory within this one named childName and returns it.
 // Panics if there is already a Node named childName in this directory.
@@ -46,7 +46,7 @@ func (dir *Directory) HasChildNamed(childName string) bool {
 
 // Get the child Node named ChildNode.
 // Panics if there is no such child.
-func (dir *Directory) GetChildNamed(childName string) Node {
+func (dir *Directory) GetChildNamed(childName string) (child Node, err error) {
 	panic("TODO")
 }
 
@@ -64,7 +64,7 @@ func (dir *Directory) CreateTime() time.Time {
 	return dir.Inode.CreateTime()
 }
 
-func (dir *Directory) Tree() Tree {
+func (dir *Directory) Tree() MemoryFS {
 	return dir.Inode.Tree()
 }
 

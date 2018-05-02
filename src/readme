@@ -1,2 +1,1 @@
 ./labgob, ./labrpc, and ./linearizability are copied from the 6.824 staff code.
-The contents of raft and kvraft are copied from the starter code so that code that depends on them compiles.

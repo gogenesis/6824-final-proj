@@ -1,55 +1,48 @@
 package fsraft
 
 import (
-	"fmt"
 	"testing"
 )
 
-// You can change these from panic to t.Fatalf if it would make your life easier
-func assertNoError(e error) {
-	if e != nil {
-		panic(e.Error())
-	}
+// The combiner: takes a "difficulty" and a "test" and runs that test on that difficulty.
+func runUnitTestWithDifficulty(t *testing.T, difficulty func(t *testing.T) FileSystem, testToRun func(fs FileSystem)) {
+	fs := difficulty(t)
+	testToRun(fs)
 }
 
-func assertEquals(expected, actual interface{}) {
-	if expected != actual {
-		panic(fmt.Sprintf("Assertion error! Expected %+v, got %+v\n", expected, actual))
-	}
-}
+// Difficulty settings ========================================================
 
-func assert(cond bool) {
-	if !cond {
-		panic("Assertion error!")
-	}
-}
-
-func TestBasicReadWrite(t *testing.T) {
-	fileName := "/foo.txt" // arbitrarily
-	contents := "bar"      // also arbitrarily
-	bytes := []byte(contents)
-	numBytes := len(bytes)
-
+func OneClerkOneServerNoErrors(t *testing.T) FileSystem {
 	cfg := make_config(t, 1, false, -1)
-	ck := cfg.makeClient(cfg.All())
-
-	fd, err := ck.Open(fileName, ReadWrite, Create)
-	assertNoError(err)
-
-	numWritten, err := ck.Write(fd, numBytes, bytes)
-	assertNoError(err)
-	assertEquals(numBytes, numWritten)
-
-	newPosition, err := ck.Seek(fd, 0, FromBeginning)
-	assertNoError(err)
-	assertEquals(0, newPosition)
-
-	numRead, data, err := ck.Read(fd, numBytes)
-	assertNoError(err)
-	assertEquals(numBytes, numRead)
-	assertEquals(bytes, data)
-
-	success, err := ck.Close(fd)
-	assertNoError(err)
-	assert(success)
+	return cfg.makeClient(cfg.All())
 }
+
+func OneClerkFiveServersNoErrors(t *testing.T) FileSystem {
+	cfg := make_config(t, 5, false, -1)
+	return cfg.makeClient(cfg.All())
+}
+
+// Combinations of unit tests and difficulty settings =========================
+// Unit tests themselves are in filesystem_test.go.
+// I (David) am looking into how to autogenerate these for every combination of unit test and diffculty,
+// but in the meantime, we can write them by hand.
+
+func TestClerk_OneClerkOneServerNoErrors_OpenClose(t *testing.T) {
+	runUnitTestWithDifficulty(t, OneClerkOneServerNoErrors, TestFSOpenClose)
+}
+
+func TestClerk_OneClerkFiveServersNoErrors_OpenClose(t *testing.T) {
+	runUnitTestWithDifficulty(t, OneClerkFiveServersNoErrors, TestFSOpenClose)
+}
+
+func TestClerk_OneClerkOneServerNoErrors_BasicReadWrite(t *testing.T) {
+	runUnitTestWithDifficulty(t, OneClerkOneServerNoErrors, TestFSBasicReadWrite)
+}
+
+func TestClerk_OneClerkFiveServersNoErrors_BasicReadWrite(t *testing.T) {
+	runUnitTestWithDifficulty(t, OneClerkFiveServersNoErrors, TestFSBasicReadWrite)
+}
+
+
+// TODO when more tests are written in filesystem_tests.go, call them here.
+// I (David) will look into

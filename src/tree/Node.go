@@ -15,7 +15,7 @@ type Node interface {
 	// Get the name of this Node, not including the path.
 	Name() string
 
-	// Get the path from the root of the Tree to this Node.
+	// Get the path from the root of the MemoryFS to this Node.
 	RelativePath() string
 
 	//// Get the time this Node was last modified.
@@ -23,30 +23,31 @@ type Node interface {
 	//ModifyTime() time.Time
 
 	// Get the time this Node was created.
-	CreateTime() time.Time
+	// Removed for simplicity (for now).
+	//CreateTime() time.Time
 
-	// Get a pointer to the Tree containing this Node.
-	Tree() Tree
+	// Get a pointer to the MemoryFS containing this Node.
+	Tree() MemoryFS
 
 	// Get the Directory containing this node.
-	// Returns nil if this folder is the root directory of the Tree.
-	Parent() Directory
+	// Returns nil if this folder is the root directory of the MemoryFS.
+	//Parent() Directory
 
 	// Mutators ===============================================================
 
 	// Delete this Node and, if it is a directory, all Nodes within it.
 	// Requires the write lock on this node AND on its parent directory.
-	// Panics if this Node is the root directory of its Tree.
+	// Panics if this Node is the root directory of its MemoryFS.
 	Delete()
 
 	// Changes the name of this Node to name NewName.
 	// Requires the lock on this node.
-	Rename(newName string)
+	//Rename(newName string) // Ignored (for now)
 
 	// Copy this Node into a new Node named newName.
 	// Requires the lock on this node.
 	// Panics if another Node in the same directory is also named NewName.
-	Copy(newName string)
+	//Copy(newName string) // Ignored (for now)
 
 	// Locking methods ========================================================
 
@@ -101,5 +102,5 @@ func AbsolutePath(node Node) string {
 	//node.readLock()
 	//defer node.readUnlock()
 	//
-	//return path.Join(node.Tree().rootPath(), node.RelativePath())
+	//return path.Join(node.MemoryFS().rootPath(), node.RelativePath())
 }
