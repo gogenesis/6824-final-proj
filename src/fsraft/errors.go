@@ -25,7 +25,7 @@ const (
 	AlreadyExists                      // The specified pathname already exists (EEXIST).
 )
 
-var valuesToStrings = map[*ErrorCode]string{
+var valuesToStrings = map[ErrorCode]string{
 	InvalidPath:       "InvalidPath",
 	NotFound:          "NotFound",
 	IsDirectory:       "IsDirectory",
@@ -42,7 +42,7 @@ var valuesToStrings = map[*ErrorCode]string{
 // Needed for ErrorCode to conform to the builtin interface "error",
 // see https://golang.org/ref/spec#Errors
 func (e *ErrorCode) Error() string {
-	return valuesToStrings[e]
+	return valuesToStrings[*e]
 }
 
 // Used for traditional turning an object into a string
