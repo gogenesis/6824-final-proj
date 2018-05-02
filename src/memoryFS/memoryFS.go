@@ -1,9 +1,7 @@
 package memoryFS
 
 import (
-	"fmt"
 	"fsraft"
-	"math"
 	"path"
 	"strings"
 )
@@ -93,6 +91,7 @@ func (mfs *MemoryFS) Open(filePath string, mode fsraft.OpenMode, flags fsraft.Op
 
 	//fmt.Printf("Returning FD=%v", fileDescriptor)
 	err = nil // Not sure if this is necessary? If not, just delete it
+	return
 }
 
 // See the spec for FileSystem::Close.
