@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// Returns a small MemoryFS that will be useful for testing.
-// The MemoryFS is mounted at "/root" and contains one empty file
+// Returns a small memoryFS that will be useful for testing.
+// The memoryFS is mounted at "/root" and contains one empty file
 // in the top-level directory named "foo".
 func getSmallTree() MemoryFS {
 	tree := createEmptyTree("/root")
@@ -19,8 +19,8 @@ func getSmallTree() MemoryFS {
 	return tree
 }
 
-// Returns a MemoryFS that will be useful for testing.
-// The MemoryFS is mounted at "/root" and looks like this:
+// Returns a memoryFS that will be useful for testing.
+// The memoryFS is mounted at "/root" and looks like this:
 // /root/
 //   |- fileA
 //   |- child/
@@ -48,7 +48,7 @@ func getLargeTree() MemoryFS {
 	return tree
 }
 
-// Create a small MemoryFS, open the root dir and the file, and return them all.
+// Create a small memoryFS, open the root dir and the file, and return them all.
 func getSmallTreeParts() (MemoryFS, Directory, File) {
 	tree := getSmallTree()
 	root := tree.GetRootDir()
@@ -73,7 +73,7 @@ func TestRelativePath(t *testing.T) {
 	defer child.Close()
 
 	assertEquals("/root", root.RelativePath())
-	assertEquals("/root/child", child.RelativePath())
+	assertEquals("/root/child", child.Path())
 }
 
 func TestCreateTime(t *testing.T) {

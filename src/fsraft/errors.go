@@ -40,12 +40,13 @@ var valuesToStrings = map[ErrorCode]string{
 }
 
 // Needed for ErrorCode to conform to the builtin interface "error",
+// Note that ErrorCode uses value receivers, not pointer receivers.
 // see https://golang.org/ref/spec#Errors
-func (e *ErrorCode) Error() string {
-	return valuesToStrings[*e]
+func (e ErrorCode) Error() string {
+	return valuesToStrings[e]
 }
 
 // Used for traditional turning an object into a string
-func (e *ErrorCode) String() string {
+func (e ErrorCode) String() string {
 	return e.Error()
 }

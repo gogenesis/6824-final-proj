@@ -88,6 +88,19 @@ const (
 	ReadWrite
 )
 
+func (o OpenMode) String() string {
+	switch o {
+	case ReadOnly:
+		return "ReadOnly"
+	case WriteOnly:
+		return "WriteOnly"
+	case ReadWrite:
+		return "ReadWrite"
+	default:
+		panic("Unknown OpenMode")
+	}
+}
+
 type OpenFlags int
 
 const (
