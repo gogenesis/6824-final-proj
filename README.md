@@ -6,5 +6,8 @@ The purpose of this project is to solve a hard distributed systems problem.
 We implement a tree metadata structure across Raft, a replicated state machine written in Golang. We expose a client API that provides a subset of 64-bit POSIX file operations, and implment a simple FUSE driver to allow any application to access the filesystem through a standard Linux mount point.
 
 -Priorities
-...
-
+Validate Tree Filesystem Data Structure
+Validate Clerk
+Valdiate Tree Filesystem Data Structure on a Raft
+Socket Driver Validation
+FUSE Driver Validation
