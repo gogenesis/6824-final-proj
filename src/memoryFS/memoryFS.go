@@ -97,7 +97,11 @@ func (mfs *MemoryFS) Open(filePath string, mode fsraft.OpenMode, flags fsraft.Op
 
 // See the spec for FileSystem::Close.
 func (mfs *MemoryFS) Close(fileDescriptor int) (success bool, err error) {
-	panic("TODO")
+	file, fdIsActive := mfs.activeFDs[fileDescriptor]
+	if !fdIsActive {
+		return false, fsraft.InvalidFD
+	}
+	return file.Close()
 }
 
 // See the spec for FileSystem::Seek.
