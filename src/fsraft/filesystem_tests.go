@@ -11,46 +11,149 @@ import "testing"
 // Whenever you add a new functionality test, be sure to add it to this list.
 // This list is used in test_setup.go to run every functionality test on every difficulty.
 var FunctionalityTests = []func(t *testing.T, fs FileSystem){
-	TestOpenClose,
-	TestBasicReadWrite,
+   TestOpenCloseBasic,
+   TestOpenROClose,
+   TestOpenROClose4,
+   TestOpenRWClose,
+   TestOpenRWClose4, //XXX generation marker
+   TestBasicReadWrite,
 }
 
-func TestOpenClose(t *testing.T, fs FileSystem) {
-	fileName := "/foo.txt" // arbitrarily
+func TestOpenCloseBasic(t *testing.T, fs FileSystem) {
+   fileName := "/foo.txt" // arbitrarily
 
-	fd, err := fs.Open(fileName, ReadWrite, Create)
-	assertNoErrorFail(t, err)
+   //@dedup pending
+   fd, err := fs.Open(fileName, ReadWrite, Create)
+   assertNoErrorFail(t, err)
 
-	success, err := fs.Close(fd)
-	assertNoErrorFail(t, err)
-	assertFail(t, success)
+   success, err := fs.Close(fd)
+   assertNoErrorFail(t, err)
+   assertFail(t, success)
+}
+
+func TestOpenROClose(t *testing.T, fs FileSystem) {
+   fileName := "/fooRO.txt"
+
+   //@dedup pending
+   fd, err := fs.Open(fileName, ReadOnly, Create)
+   assertNoErrorFail(t, err)
+
+   success, err := fs.Close(fd)
+   assertNoErrorFail(t, err)
+   assertFail(t, success)
+}
+
+func TestOpenROClose4 (t *testing.T, fs FileSystem) {
+   path1 := "/fooRO1.txt"
+   path2 := "/fooRO2.txt"
+   path3 := "/fooRO3.txt"
+   path4 := "/fooRO4.txt"
+
+   //@dedup pending
+   fd1, err1 := fs.Open(path1, ReadOnly, Create)
+   assertNoErrorFail(t, err1)
+
+   fd2, err2 := fs.Open(path2, ReadOnly, Create)
+   assertNoErrorFail(t, err2)
+
+   fd3, err3 := fs.Open(path3, ReadOnly, Create)
+   assertNoErrorFail(t, err3)
+
+   fd4, err4 := fs.Open(path4, ReadOnly, Create)
+   assertNoErrorFail(t, err4)
+
+   //@dedup pending
+   success, err := fs.Close(fd1)
+   assertNoErrorFail(t, err)
+   assertFail(t, success)
+
+   success, err = fs.Close(fd2)
+   assertNoErrorFail(t, err)
+   assertFail(t, success)
+
+   success, err = fs.Close(fd3)
+   assertNoErrorFail(t, err)
+   assertFail(t, success)
+
+   success, err = fs.Close(fd4)
+   assertNoErrorFail(t, err)
+   assertFail(t, success)
+}
+
+func TestOpenRWClose(t *testing.T, fs FileSystem) {
+   path := "/fooRW.txt"
+
+   //@dedup pending
+   fd, err := fs.Open(path, ReadWrite, Create)
+   assertNoErrorFail(t, err)
+
+   success, err := fs.Close(fd)
+   assertNoErrorFail(t, err)
+   assertFail(t, success)
+}
+
+func TestOpenRWClose4 (t *testing.T, fs FileSystem) {
+   path1 := "/fooRW1.txt"
+   path2 := "/fooRW2.txt"
+   path3 := "/fooRW3.txt"
+   path4 := "/fooRW4.txt"
+
+   //@dedup pending
+   fd1, err1 := fs.Open(path1, ReadWrite, Create)
+   assertNoErrorFail(t, err1)
+
+   fd2, err2 := fs.Open(path2, ReadWrite, Create)
+   assertNoErrorFail(t, err2)
+
+   fd3, err3 := fs.Open(path3, ReadWrite, Create)
+   assertNoErrorFail(t, err3)
+
+   fd4, err4 := fs.Open(path4, ReadWrite, Create)
+   assertNoErrorFail(t, err4)
+
+   //@dedup pending
+   success, err := fs.Close(fd1)
+   assertNoErrorFail(t, err)
+   assertFail(t, success)
+
+   success, err = fs.Close(fd2)
+   assertNoErrorFail(t, err)
+   assertFail(t, success)
+
+   success, err = fs.Close(fd3)
+   assertNoErrorFail(t, err)
+   assertFail(t, success)
+
+   success, err = fs.Close(fd4)
+   assertNoErrorFail(t, err)
+   assertFail(t, success)
 }
 
 func TestBasicReadWrite(t *testing.T, fs FileSystem) {
-	fileName := "/foo.txt" // arbitrarily
-	contents := "bar"      // also arbitrarily
-	bytes := []byte(contents)
-	numBytes := len(bytes)
+   fileName := "/foo.txt" // arbitrarily
+   contents := "bar"      // also arbitrarily
+   bytes := []byte(contents)
+   numBytes := len(bytes)
 
-	fd, err := fs.Open(fileName, ReadWrite, Create)
-	assertNoErrorFail(t, err)
+   fd, err := fs.Open(fileName, ReadWrite, Create)
+   assertNoErrorFail(t, err)
 
-	numWritten, err := fs.Write(fd, numBytes, bytes)
-	assertNoErrorFail(t, err)
-	assertEqualsFail(t, numBytes, numWritten)
+   numWritten, err := fs.Write(fd, numBytes, bytes)
+   assertNoErrorFail(t, err)
+   assertEqualsFail(t, numBytes, numWritten)
 
-	newPosition, err := fs.Seek(fd, 0, FromBeginning)
-	assertNoErrorFail(t, err)
-	assertEqualsFail(t, 0, newPosition)
+   newPosition, err := fs.Seek(fd, 0, FromBeginning)
+   assertNoErrorFail(t, err)
+   assertEqualsFail(t, 0, newPosition)
 
-	numRead, data, err := fs.Read(fd, numBytes)
-	assertNoErrorFail(t, err)
-	assertEqualsFail(t, numBytes, numRead)
-	assertEqualsFail(t, bytes, data)
+   numRead, data, err := fs.Read(fd, numBytes)
+   assertNoErrorFail(t, err)
+   assertEqualsFail(t, numBytes, numRead)
+   assertEqualsFail(t, bytes, data)
 
-	success, err := fs.Close(fd)
-	assertNoErrorFail(t, err)
-	assertFail(t, success)
+   success, err := fs.Close(fd)
+   assertNoErrorFail(t, err)
+   assertFail(t, success)
 
 }
 
