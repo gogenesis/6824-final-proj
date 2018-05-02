@@ -1,10 +1,13 @@
-package MemoryFS
+package memoryFS
 
 import "fsraft"
 
 // An in-memory file system.
 // Files here are stored in memory in Go.
-type MemoryFS struct{}
+type MemoryFS struct {
+	openFDs map[int]interface{} // TODO this should be a map to files
+	// TODO more
+}
 
 // Create an empty in-memory FileSystem rooted at "/".
 func CreateEmptyMemoryFS() MemoryFS {

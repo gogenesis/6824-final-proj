@@ -6,7 +6,7 @@ import (
 )
 
 // A file server built on Raft.
-// This is similar to the kvserver, but stores an in-memory FileSystem (see package "MemoryFS")
+// This is similar to the kvserver, but stores an in-memory FileSystem (see package "memoryFS")
 // instead of a map[string]string. This filesystem is linearizable; a Read() that
 // begins after a Write() finishes is guaranteed to return the new data.
 type FileServer struct {

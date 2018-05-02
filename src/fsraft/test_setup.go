@@ -7,12 +7,12 @@ import (
 
 // Ihis file facilitates unit tests, but does not run any tests itself.
 // It includes difficulty settings for distributed tests and assert statements.
-// This program runs generate_combination_tests.go when you type "go generate" because of the following magic comment:
-//go:generate go run generate_combination_tests.go
+// This program runs generate_unit_tests.go when you type "go generate" because of the following magic comment:
+//go:generate go run generate_unit_tests.go
 
 // The combiner: takes a difficulty and a functionality test and runs that test on that difficulty.
-func runFunctionalityTestWithDifficulty(t *testing.T, functionalityTest func(fs FileSystem), difficulty func(t *testing.T) FileSystem) {
-	functionalityTest(difficulty(t))
+func runFunctionalityTestWithDifficulty(t *testing.T, functionalityTest func(t *testing.T, fs FileSystem), difficulty func(t *testing.T) FileSystem) {
+	functionalityTest(t, difficulty(t))
 }
 
 // Difficulty settings ========================================================
@@ -37,21 +37,39 @@ func OneClerkFiveServersNoErrors(t *testing.T) FileSystem {
 // Assertions =================================================================
 
 // You can change these from panic to t.Fatalf if it would make your life easier
-func assertNoError(e error) {
+func assertNoErrorPanic(e error) {
 	if e != nil {
 		panic(e.Error())
 	}
 }
 
-func assertEquals(expected, actual interface{}) {
+func assertEqualsPanic(expected, actual interface{}) {
 	if expected != actual {
 		panic(fmt.Sprintf("Assertion error! Expected %+v, got %+v\n", expected, actual))
 	}
 }
 
-func assert(cond bool) {
+func assertPanic(cond bool) {
 	if !cond {
 		panic("Assertion error!")
+	}
+}
+
+func assertFail(t *testing.T, cond bool) {
+	if !cond {
+		t.Fatalf("Assertion error!")
+	}
+}
+
+func assertNoErrorFail(t *testing.T, e error) {
+	if e != nil {
+		t.Fatalf(e.Error())
+	}
+}
+
+func assertEqualsFail(t *testing.T, expected, actual interface{}) {
+	if expected != actual {
+		t.Fatalf("Assertion error! Expected %+v, got %+v\n", expected, actual)
 	}
 }
 
