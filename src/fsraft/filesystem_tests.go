@@ -12,116 +12,142 @@ import "fmt"
 // Whenever you add a new functionality test, be sure to add it to this list.
 // This list is used in test_setup.go to run every functionality test on every difficulty.
 var FunctionalityTests = []func(t *testing.T, fs FileSystem){
-   TestOpenCloseBasic,
-   TestOpenROClose,
-   TestOpenROClose4,
-   TestOpenRWClose64,
-   TestOpenRWClose,
-   TestOpenRWClose4,
-   TestOpenRWClose64,
-   TestReadWriteBasic,
-   TestReadWriteBasic4, //XXX generation marker
+	TestOpenCloseBasic,
+	TestOpenROClose,
+	TestOpenROClose4,
+	TestOpenRWClose64,
+	TestOpenRWClose,
+	TestOpenRWClose4,
+	TestOpenRWClose64,
+	TestReadWriteBasic,
+	TestReadWriteBasic4, //XXX generation marker
 }
 
 func HelpOpen(t *testing.T, fs FileSystem,
-              path string, mode OpenMode, flags OpenFlags) int {
-   fd, err := fs.Open(path, mode, flags)
-   assertNoErrorFail(t, err)
-   assertValidFD(t, fd)
-   return fd
+	path string, mode OpenMode, flags OpenFlags) int {
+	fd, err := fs.Open(path, mode, flags)
+	assertNoErrorFail(t, err)
+	assertValidFD(t, fd)
+	return fd
 }
 
 func HelpClose(t *testing.T, fs FileSystem, fd int) {
-   success, err := fs.Close(fd)
-   assertNoErrorFail(t, err)
-   assertFail(t, success)
+	success, err := fs.Close(fd)
+	assertNoErrorFail(t, err)
+	assertFail(t, success)
 }
 
 func HelpOpenClose(t *testing.T, fs FileSystem,
-                      path string, mode OpenMode, flags OpenFlags) {
-   HelpClose(t, fs, HelpOpen(t, fs, path, mode, flags))
+	path string, mode OpenMode, flags OpenFlags) {
+	HelpClose(t, fs, HelpOpen(t, fs, path, mode, flags))
 }
 
 func HelpBatchOpenClose(t *testing.T, fs FileSystem,
-                        nFiles int, mode OpenMode, flags OpenFlags) {
-   fds := make([]int, nFiles)
-   // open N files with same mode and flags
-   for ix := 0; ix < nFiles; ix++ {
-      fds[ix] = HelpOpen(t, fs, //TODO could randomize name further
-                         fmt.Sprintf("/foo%d.txt", ix), mode, flags)
-   }
-   // then close all N files
-   for ix := 0; ix < nFiles; ix++ { HelpClose(t, fs, fds[ix]) }  
+	nFiles int, mode OpenMode, flags OpenFlags) {
+	fds := make([]int, nFiles)
+	// open N files with same mode and flags
+	for ix := 0; ix < nFiles; ix++ {
+		fds[ix] = HelpOpen(t, fs, //TODO could randomize name further
+			fmt.Sprintf("/foo%d.txt", ix), mode, flags)
+	}
+	// then close all N files
+	for ix := 0; ix < nFiles; ix++ {
+		HelpClose(t, fs, fds[ix])
+	}
 }
 
-// ====== END HELPERS ===== BEGIN OPEN CLOSE TESTS ====== 
+// ====== END HELPERS ===== BEGIN OPEN CLOSE TESTS ======
 
 func TestOpenCloseBasic(t *testing.T, fs FileSystem) {
-   HelpOpenClose(t, fs, "/foo.txt", ReadWrite, Create)
+	HelpOpenClose(t, fs, "/foo.txt", ReadWrite, Create)
 }
 
 func TestOpenROClose(t *testing.T, fs FileSystem) {
-   HelpOpenClose(t, fs, "/fooRO.txt", ReadOnly, Create)
+	HelpOpenClose(t, fs, "/fooRO.txt", ReadOnly, Create)
 }
 
 func TestOpenRWClose(t *testing.T, fs FileSystem) {
-   HelpOpenClose(t, fs, "/fooRO.txt", ReadOnly, Create)
+	HelpOpenClose(t, fs, "/fooRO.txt", ReadOnly, Create)
 }
 
-func TestOpenROClose4 (t *testing.T, fs FileSystem) {
-   HelpBatchOpenClose(t, fs, 4, ReadOnly, Create)
+func TestOpenROClose4(t *testing.T, fs FileSystem) {
+	HelpBatchOpenClose(t, fs, 4, ReadOnly, Create)
 }
 
-func TestOpenROClose64 (t *testing.T, fs FileSystem) {
-   HelpBatchOpenClose(t, fs, 64, ReadOnly, Create)
+func TestOpenROClose64(t *testing.T, fs FileSystem) {
+	HelpBatchOpenClose(t, fs, 64, ReadOnly, Create)
 }
 
-func TestOpenRWClose4 (t *testing.T, fs FileSystem) {
-   HelpBatchOpenClose(t, fs, 4, ReadWrite, Create)
+func TestOpenRWClose4(t *testing.T, fs FileSystem) {
+	HelpBatchOpenClose(t, fs, 4, ReadWrite, Create)
 }
 
-func TestOpenRWClose64 (t *testing.T, fs FileSystem) {
-   HelpBatchOpenClose(t, fs, 64, ReadWrite, Create)
-} // holding off on pushing open close more 
+func TestOpenRWClose64(t *testing.T, fs FileSystem) {
+	HelpBatchOpenClose(t, fs, 64, ReadWrite, Create)
+} // holding off on pushing open close more
+
+func TestOpenLeastFD(t *testing.T, fs FileSystem) {
+	fd3A := HelpOpen(t, fs, "/A.txt", ReadWrite, Create)
+	// Should be 3 because that's the lowest non-reserved non-active FD.
+	assertEqualsFail(t, 3, fd3A)
+	HelpClose(t, fs, fd3A)
+
+	fd3B := HelpOpen(t, fs, "/B.txt", ReadWrite, Create)
+	// Should be 3 again because A.txt was closed, so FD=3 is now non-active again.
+	assertEqualsFail(t, 3, fd3B)
+	// we're not closing it just yet
+
+	fd4 := HelpOpen(t, fs, "/C.txt", ReadWrite, Create)
+	// Should be 4 because 0-2 are reserved, 3 is taken, and 4 is next.
+	assertEqualsFail(t, 4, fd4)
+
+	HelpClose(t, fs, fd3B)
+
+	fd3C := HelpOpen(t, fs, "/D.txt", ReadWrite, Create)
+	// B.txt was closed, so FD=3 is now non-active again.
+	assertEqualsFail(t, 3, fd3C)
+
+	HelpClose(t, fs, fd3C)
+	HelpClose(t, fs, fd4)
+}
 
 // ===== END OPEN CLOSE TESTS ===== BEGIN READ WRITE TESTS =====
 
 func HelpReadWrite(t *testing.T, fs FileSystem, path string, contents string) {
-   bytes := []byte(contents)
-   numBytes := len(bytes)
+	bytes := []byte(contents)
+	numBytes := len(bytes)
 
-   fd, err := fs.Open(path, ReadWrite, Create)
-   assertNoErrorFail(t, err)
-   assertValidFD(t, fd)
+	fd, err := fs.Open(path, ReadWrite, Create)
+	assertNoErrorFail(t, err)
+	assertValidFD(t, fd)
 
-   numWritten, err := fs.Write(fd, numBytes, bytes)
-   assertNoErrorFail(t, err)
-   assertEqualsFail(t, numBytes, numWritten)
+	numWritten, err := fs.Write(fd, numBytes, bytes)
+	assertNoErrorFail(t, err)
+	assertEqualsFail(t, numBytes, numWritten)
 
-   newPosition, err := fs.Seek(fd, 0, FromBeginning)
-   assertNoErrorFail(t, err)
-   assertEqualsFail(t, 0, newPosition)
+	newPosition, err := fs.Seek(fd, 0, FromBeginning)
+	assertNoErrorFail(t, err)
+	assertEqualsFail(t, 0, newPosition)
 
-   numRead, data, err := fs.Read(fd, numBytes)
-   assertNoErrorFail(t, err)
-   assertEqualsFail(t, numBytes, numRead)
-   assertEqualsFail(t, bytes, data)
+	numRead, data, err := fs.Read(fd, numBytes)
+	assertNoErrorFail(t, err)
+	assertEqualsFail(t, numBytes, numRead)
+	assertEqualsFail(t, bytes, data)
 
-   success, err := fs.Close(fd)
-   assertNoErrorFail(t, err)
-   assertFail(t, success)
+	success, err := fs.Close(fd)
+	assertNoErrorFail(t, err)
+	assertFail(t, success)
 }
 
 func TestReadWriteBasic(t *testing.T, fs FileSystem) {
-   HelpReadWrite(t, fs, "/foo.txt", "bar") //TODO randomize contents
+	HelpReadWrite(t, fs, "/foo.txt", "bar") //TODO randomize contents
 }
 
 func TestReadWriteBasic4(t *testing.T, fs FileSystem) {
-   HelpReadWrite(t, fs, "/foo1.txt", "bar1") //TODO randomize contents
-   HelpReadWrite(t, fs, "/foo2.txt", "bar2") //TODO randomize contents
-   HelpReadWrite(t, fs, "/foo3.txt", "bar3") //TODO randomize contents
-   HelpReadWrite(t, fs, "/foo4.txt", "bar4") //TODO randomize contents
+	HelpReadWrite(t, fs, "/foo1.txt", "bar1") //TODO randomize contents
+	HelpReadWrite(t, fs, "/foo2.txt", "bar2") //TODO randomize contents
+	HelpReadWrite(t, fs, "/foo3.txt", "bar3") //TODO randomize contents
+	HelpReadWrite(t, fs, "/foo4.txt", "bar4") //TODO randomize contents
 }
-
 
 // TODO more unit tests.
