@@ -73,6 +73,12 @@ func assertEqualsFail(t *testing.T, expected, actual interface{}) {
 	}
 }
 
+func assertValidFD(t *testing.T, fd int) {
+   if fd < 0 { // file descriptors can be 0 right?
+      t.Fatalf(fmt.Sprintf("invalid fd %d", fd))
+   }
+}
+
 // Code generation ============================================================
 
 // Someone on the

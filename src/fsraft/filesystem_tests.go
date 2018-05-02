@@ -25,6 +25,7 @@ func TestOpenCloseBasic(t *testing.T, fs FileSystem) {
    //@dedup pending
    fd, err := fs.Open(fileName, ReadWrite, Create)
    assertNoErrorFail(t, err)
+   assertValidFD(t, fd)
 
    success, err := fs.Close(fd)
    assertNoErrorFail(t, err)
@@ -37,6 +38,7 @@ func TestOpenROClose(t *testing.T, fs FileSystem) {
    //@dedup pending
    fd, err := fs.Open(fileName, ReadOnly, Create)
    assertNoErrorFail(t, err)
+   assertValidFD(t, fd)
 
    success, err := fs.Close(fd)
    assertNoErrorFail(t, err)
@@ -52,15 +54,19 @@ func TestOpenROClose4 (t *testing.T, fs FileSystem) {
    //@dedup pending
    fd1, err1 := fs.Open(path1, ReadOnly, Create)
    assertNoErrorFail(t, err1)
+   assertValidFD(t, fd1)
 
    fd2, err2 := fs.Open(path2, ReadOnly, Create)
    assertNoErrorFail(t, err2)
+   assertValidFD(t, fd2)
 
    fd3, err3 := fs.Open(path3, ReadOnly, Create)
    assertNoErrorFail(t, err3)
+   assertValidFD(t, fd3)
 
    fd4, err4 := fs.Open(path4, ReadOnly, Create)
    assertNoErrorFail(t, err4)
+   assertValidFD(t, fd4)
 
    //@dedup pending
    success, err := fs.Close(fd1)
@@ -86,6 +92,7 @@ func TestOpenRWClose(t *testing.T, fs FileSystem) {
    //@dedup pending
    fd, err := fs.Open(path, ReadWrite, Create)
    assertNoErrorFail(t, err)
+   assertValidFD(t, fd)
 
    success, err := fs.Close(fd)
    assertNoErrorFail(t, err)
@@ -101,15 +108,19 @@ func TestOpenRWClose4 (t *testing.T, fs FileSystem) {
    //@dedup pending
    fd1, err1 := fs.Open(path1, ReadWrite, Create)
    assertNoErrorFail(t, err1)
+   assertValidFD(t, fd1)
 
    fd2, err2 := fs.Open(path2, ReadWrite, Create)
    assertNoErrorFail(t, err2)
+   assertValidFD(t, fd2)
 
    fd3, err3 := fs.Open(path3, ReadWrite, Create)
    assertNoErrorFail(t, err3)
+   assertValidFD(t, fd3)
 
    fd4, err4 := fs.Open(path4, ReadWrite, Create)
    assertNoErrorFail(t, err4)
+   assertValidFD(t, fd4)
 
    //@dedup pending
    success, err := fs.Close(fd1)
@@ -137,6 +148,7 @@ func TestBasicReadWrite(t *testing.T, fs FileSystem) {
 
    fd, err := fs.Open(fileName, ReadWrite, Create)
    assertNoErrorFail(t, err)
+   assertValidFD(t, fd)
 
    numWritten, err := fs.Write(fd, numBytes, bytes)
    assertNoErrorFail(t, err)
