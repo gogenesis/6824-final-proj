@@ -41,6 +41,35 @@ func (in *Inode) Copy(newName string) {
 }
 
 func (in *Inode) Open(mode OpenMode) {
+   //
+   // your code looks beautiful - wonderful symmetric documentation up front
+   // you rock 
+   //
+   // it is late, I want to collect my thoughts again in the morning...
+   // but is the progression we are going for:
+   //
+   // add test(s) for open
+   // for now, set this inode as open while locked and return
+   // observe test(s) pass
+   // add network partition verison of test
+   // observe test(s) pass
+   // add lossy network version of test
+   // observe test(s) pass
+   //
+   // (repeat for other functions)
+   //
+   // then when adapting to raft version implementation
+   // run test(s) for open and observe crash
+   // start open on raft
+   // wait for leadership loss or completed apply msg
+   // if open was replicated, then and only then set this inode as open
+   // else retry... and or eventually timeout / crash?
+   // observe test(s) pass
+   //
+   // (repeat for other functions)
+   // 
+   // @taylor
+   // 
 	panic("TODO")
 }
 
