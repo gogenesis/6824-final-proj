@@ -1,6 +1,7 @@
 package fsraft
 
 import "testing"
+import "fmt"
 
 // Functionality tests for a FileSystem go here.
 // Functions in this file are NOT "unit tests" because they ill not be run by "go test" because
@@ -14,132 +15,76 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
    TestOpenCloseBasic,
    TestOpenROClose,
    TestOpenROClose4,
+   TestOpenRWClose64,
    TestOpenRWClose,
-   TestOpenRWClose4, //XXX generation marker
+   TestOpenRWClose4,
+   TestOpenRWClose64,
    TestReadWriteBasic,
-   TestReadWriteBasic4,
+   TestReadWriteBasic4, //XXX generation marker
 }
 
-func TestOpenCloseBasic(t *testing.T, fs FileSystem) {
-   fileName := "/foo.txt" // arbitrarily
-
-   //@dedup pending
-   fd, err := fs.Open(fileName, ReadWrite, Create)
+func HelpOpen(t *testing.T, fs FileSystem,
+              path string, mode OpenMode, flags OpenFlags) int {
+   fd, err := fs.Open(path, mode, flags)
    assertNoErrorFail(t, err)
    assertValidFD(t, fd)
+   return fd
+}
 
+func HelpClose(t *testing.T, fs FileSystem, fd int) {
    success, err := fs.Close(fd)
    assertNoErrorFail(t, err)
    assertFail(t, success)
+}
+
+func HelpOpenClose(t *testing.T, fs FileSystem,
+                      path string, mode OpenMode, flags OpenFlags) {
+   HelpClose(t, fs, HelpOpen(t, fs, path, mode, flags))
+}
+
+func HelpBatchOpenClose(t *testing.T, fs FileSystem,
+                        nFiles int, mode OpenMode, flags OpenFlags) {
+   fds := make([]int, nFiles)
+   // open N files with same mode and flags
+   for ix := 0; ix < nFiles; ix++ {
+      fds[ix] = HelpOpen(t, fs, //TODO could randomize name further
+                         fmt.Sprintf("/foo%d.txt", ix), mode, flags)
+   }
+   // then close all N files
+   for ix := 0; ix < nFiles; ix++ { HelpClose(t, fs, fds[ix]) }  
+}
+
+// ====== END HELPERS ===== BEGIN OPEN CLOSE TESTS ====== 
+
+func TestOpenCloseBasic(t *testing.T, fs FileSystem) {
+   HelpOpenClose(t, fs, "/foo.txt", ReadWrite, Create)
 }
 
 func TestOpenROClose(t *testing.T, fs FileSystem) {
-   fileName := "/fooRO.txt"
-
-   //@dedup pending
-   fd, err := fs.Open(fileName, ReadOnly, Create)
-   assertNoErrorFail(t, err)
-   assertValidFD(t, fd)
-
-   success, err := fs.Close(fd)
-   assertNoErrorFail(t, err)
-   assertFail(t, success)
-}
-
-func TestOpenROClose4 (t *testing.T, fs FileSystem) {
-   path1 := "/fooRO1.txt"
-   path2 := "/fooRO2.txt"
-   path3 := "/fooRO3.txt"
-   path4 := "/fooRO4.txt"
-
-   //@dedup pending
-   fd1, err1 := fs.Open(path1, ReadOnly, Create)
-   assertNoErrorFail(t, err1)
-   assertValidFD(t, fd1)
-
-   fd2, err2 := fs.Open(path2, ReadOnly, Create)
-   assertNoErrorFail(t, err2)
-   assertValidFD(t, fd2)
-
-   fd3, err3 := fs.Open(path3, ReadOnly, Create)
-   assertNoErrorFail(t, err3)
-   assertValidFD(t, fd3)
-
-   fd4, err4 := fs.Open(path4, ReadOnly, Create)
-   assertNoErrorFail(t, err4)
-   assertValidFD(t, fd4)
-
-   //@dedup pending
-   success, err := fs.Close(fd1)
-   assertNoErrorFail(t, err)
-   assertFail(t, success)
-
-   success, err = fs.Close(fd2)
-   assertNoErrorFail(t, err)
-   assertFail(t, success)
-
-   success, err = fs.Close(fd3)
-   assertNoErrorFail(t, err)
-   assertFail(t, success)
-
-   success, err = fs.Close(fd4)
-   assertNoErrorFail(t, err)
-   assertFail(t, success)
+   HelpOpenClose(t, fs, "/fooRO.txt", ReadOnly, Create)
 }
 
 func TestOpenRWClose(t *testing.T, fs FileSystem) {
-   path := "/fooRW.txt"
+   HelpOpenClose(t, fs, "/fooRO.txt", ReadOnly, Create)
+}
 
-   //@dedup pending
-   fd, err := fs.Open(path, ReadWrite, Create)
-   assertNoErrorFail(t, err)
-   assertValidFD(t, fd)
+func TestOpenROClose4 (t *testing.T, fs FileSystem) {
+   HelpBatchOpenClose(t, fs, 4, ReadOnly, Create)
+}
 
-   success, err := fs.Close(fd)
-   assertNoErrorFail(t, err)
-   assertFail(t, success)
+func TestOpenROClose64 (t *testing.T, fs FileSystem) {
+   HelpBatchOpenClose(t, fs, 64, ReadOnly, Create)
 }
 
 func TestOpenRWClose4 (t *testing.T, fs FileSystem) {
-   path1 := "/fooRW1.txt"
-   path2 := "/fooRW2.txt"
-   path3 := "/fooRW3.txt"
-   path4 := "/fooRW4.txt"
-
-   //@dedup pending
-   fd1, err1 := fs.Open(path1, ReadWrite, Create)
-   assertNoErrorFail(t, err1)
-   assertValidFD(t, fd1)
-
-   fd2, err2 := fs.Open(path2, ReadWrite, Create)
-   assertNoErrorFail(t, err2)
-   assertValidFD(t, fd2)
-
-   fd3, err3 := fs.Open(path3, ReadWrite, Create)
-   assertNoErrorFail(t, err3)
-   assertValidFD(t, fd3)
-
-   fd4, err4 := fs.Open(path4, ReadWrite, Create)
-   assertNoErrorFail(t, err4)
-   assertValidFD(t, fd4)
-
-   //@dedup pending
-   success, err := fs.Close(fd1)
-   assertNoErrorFail(t, err)
-   assertFail(t, success)
-
-   success, err = fs.Close(fd2)
-   assertNoErrorFail(t, err)
-   assertFail(t, success)
-
-   success, err = fs.Close(fd3)
-   assertNoErrorFail(t, err)
-   assertFail(t, success)
-
-   success, err = fs.Close(fd4)
-   assertNoErrorFail(t, err)
-   assertFail(t, success)
+   HelpBatchOpenClose(t, fs, 4, ReadWrite, Create)
 }
+
+func TestOpenRWClose64 (t *testing.T, fs FileSystem) {
+   HelpBatchOpenClose(t, fs, 64, ReadWrite, Create)
+} // holding off on pushing open close more 
+
+// ===== END OPEN CLOSE TESTS ===== BEGIN READ WRITE TESTS =====
 
 func HelpReadWrite(t *testing.T, fs FileSystem, path string, contents string) {
    bytes := []byte(contents)
