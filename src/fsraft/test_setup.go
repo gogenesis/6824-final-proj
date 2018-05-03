@@ -2,6 +2,8 @@ package fsraft
 
 import (
 	"fmt"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -36,54 +38,57 @@ func OneClerkFiveServersNoErrors(t *testing.T) FileSystem {
 
 // Assertions =================================================================
 
-// You can change these from panic to t.Fatalf if it would make your life easier
-func assertNoErrorPanic(e error) {
-	if e != nil {
-		panic(e.Error())
-	}
-}
-
-func assertEqualsPanic(expected, actual interface{}) {
-	if expected != actual {
-		panic(fmt.Sprintf("Assertion error! Expected %+v, got %+v\n", expected, actual))
-	}
-}
-
-func assertPanic(cond bool) {
-	if !cond {
-		panic("Assertion error!")
-	}
-}
-
-func assertFail(t *testing.T, cond bool) {
+func assert(t *testing.T, cond bool) {
 	if !cond {
 		t.Fatalf("Assertion error!")
 	}
 }
 
-func assertNoErrorFail(t *testing.T, e error) {
+func assertNoError(t *testing.T, e error) {
 	if e != nil {
 		t.Fatalf(e.Error())
 	}
 }
 
-func assertEqualsFail(t *testing.T, expected, actual interface{}) {
+func assertEquals(t *testing.T, expected, actual interface{}) {
 	if expected != actual {
 		t.Fatalf("Assertion error! Expected %+v, got %+v\n", expected, actual)
 	}
 }
 
 func assertValidFD(t *testing.T, fd int) {
-   if fd <= 3 {
-      t.Fatalf(fmt.Sprintf("invalid fd %d", fd))
-   }
+	if fd <= 3 {
+		t.Fatalf(fmt.Sprintf("Invalid fd %d.", fd))
+	}
 }
 
 func assertExplain(t *testing.T, cond bool, format string, a ...interface{}) {
-   if !cond {
-      // we want a stacktrace so easy way is to panic ... unless t.Fatalf does? 
-      panic(fmt.Sprintf("Assertion error! %s", fmt.Sprintf(format, a...)))
-   }
+	if !cond {
+		t.Fatalf(fmt.Sprintf("Assertion error! %s\nStack trace:\n%v", fmt.Sprintf(format, a...),
+			// skip=1 to start the stack trace with assertExplain.
+			stackTrace(1)))
+	}
+}
+
+// Prints the stack trace, not including this function, to stdout.
+func printStackTrace() {
+	// skip=2 to skip two functions: StackTrace and assertExplain.
+	fmt.Println(stackTrace(2))
+
+}
+
+// Get a string of the stack trace, skipping skip calls at the bottom.
+// For example, in StackTrace(0), the top function call in the stack is the call to StackTrace.
+// The skip parameter exists because you might want to start reading somewhere more interesting.
+func stackTrace(skip int) string {
+	buf := make([]byte, 1<<16)                // idk, this is probably enough
+	bytesWritten := runtime.Stack(buf, false) // false for only this goroutine
+	buf = buf[:bytesWritten]                  // remove trailing 0 bits
+	lines := strings.Split(string(buf), "\n")
+	// Remove one line of header and two lines per function to skip
+	lines = lines[1+2*skip:]
+	return strings.Join(lines, "\n")
+
 }
 
 // Code generation ============================================================
