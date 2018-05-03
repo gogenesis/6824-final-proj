@@ -15,16 +15,16 @@ type FileSystem interface {
 	// Path is a relative path name beginning from the top-level synchronized directory.
 	// mode is exactly one of {R, W, RW}, and flags can be any number of OpenFlags OR'd together.
 	// Returns an integer file descriptor, which is guaranteed to be the lowest file descriptor available.
-	// If the file exists, the file is opened and the Create flag is ignored.
-	// If the file does not exist and the Create flag is included, creates it.
+	// If the file exists and is not already opened, the file is opened and the Create flag is ignored.
+	// If the file does not exist and the Create flag is included, creates it and then opens it.
 	// If the file does not exist and the Create flag is not included, returns NotFound error.
 	// If the Truncate flag is set, truncates the file size to 0 (if opening succeeds).
-	// Possible errors are InvalidPath, IsDirectory, MaxFDsOpen, NotFound, and TryAgain.
+	// Possible errors are InvalidPath, IsDirectory, TooManyFDsOpen, NotFound, AlreadyOpen, and TryAgain.
 	// fileDescriptor == -1 if and only iff err is non-nil.
 	Open(path string, mode OpenMode, flags OpenFlags) (fileDescriptor int, err error)
 
 	// Close a file.
-	// Possible errors are InvalidFD and TryAgain. Success is false if and only if err is non-nil.
+	// Possible errors are InactiveFD and TryAgain. Success is false if and only if err is non-nil.
 	Close(fileDescriptor int) (success bool, err error)
 
 	// Adjusts the file offset for this file and returns the new offset.
@@ -36,8 +36,9 @@ type FileSystem interface {
 	// If data is later written at this point, subsequent reads of data in the gap shall
 	// return bytes with the value 0 until data is actually written into the gap.
 	// The seek() function shall not, by itself, extend the size of a file.
+	// If this would adjust the file offset to before the beginning of the file, returns IllegalArgument.
 	// Specification adapted from http://man7.org/linux/man-pages/man2/lseek.2.html.
-	// Possible errors are InvalidFD and TryAgain. If err is non-nil, newPosition is unspecified.
+	// Possible errors are InactiveFD, IllegalArgument, and TryAgain. If err is non-nil, newPosition is unspecified.
 	Seek(fileDescriptor int, offset int, base SeekMode) (newPosition int, err error)
 
 	// Attempts to read up to numBytes bytes from a file descriptor.
@@ -46,7 +47,8 @@ type FileSystem interface {
 	// file offset, and the file offset is incremented by the number of
 	// bytes read.  If the file offset is at or past the end of file, no
 	// bytes are read, and read() returns zero.
-	// Possible errors are IsDirectory, IOError, InvalidFD and TryAgain.
+	// If numBytes is zero, this is a no-op. If numBytes is negative, returns IllegalArgument.
+	// Possible errors are IsDirectory, IOError, InactiveFD, IllegalArgument, and TryAgain.
 	// If err is non-nil, bytesRead is 0 and data is unspecified.
 	Read(fileDescriptor int, numBytes int) (bytesRead int, data []byte, err error)
 
@@ -59,7 +61,8 @@ type FileSystem interface {
 	// written.  If the file was opened in Append mode, the file offset is
 	// first set to the end of the file before writing.  The adjustment of
 	// the file offset and the write operation are performed as an atomic step.
-	// Possible errors are IsDirectory, IOError, InvalidFD, TryAgain, FileTooLarge, or NoMoreSpace.
+	// If numBytes is zero, this is a no-op. If numBytes is negative, returns IllegalArgument.
+	// Possible errors are IsDirectory, IOError, InactiveFD, TryAgain, FileTooLarge, IllegalArgument, or NoMoreSpace.
 	// If err is non-nil, bytesWritten is -1.
 	Write(fileDescriptor int, numBytes int, data []byte) (bytesWritten int, err error)
 
@@ -79,6 +82,9 @@ type FileSystem interface {
 	// This function is not yet supported, so the spec is incomplete.
 	//func (ck *FSClerk) Duplicate(fileDescriptor int) (newFileDescriptor int, err error) { panic("Not supported.") }
 }
+
+// The maximum number of file descriptors that can be active.
+const MaxActiveFDs = 128
 
 type OpenMode int
 
@@ -108,6 +114,12 @@ const (
 	Create
 	Truncate
 )
+
+// Check whether a specific flag is set.
+// Specifially, checks whether sets of flags a and b have any overlap.
+func FlagIsSet(a, b OpenFlags) bool {
+	return (a & b) != 0
+}
 
 type SeekMode int
 

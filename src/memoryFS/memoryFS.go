@@ -1,6 +1,7 @@
 package memoryFS
 
 import (
+	"ad"
 	"fsraft"
 	"path"
 	"strings"
@@ -9,17 +10,27 @@ import (
 // An in-memory file system.
 // Files here are stored in memory in Go.
 type MemoryFS struct {
-	activeFDs           map[int]File // A map from active file descriptors to File objects.
-	smallestAvailableFD int          // The smallest positive number that is not 0, 1, 2, or an active file descriptor.
+	activeFDs           map[int]*File // A map from active file descriptors to open files.
+	smallestAvailableFD int           // The smallest positive number that is not 0, 1, 2, or an active file descriptor.
 	// (0, 1, and 2 are banned because they are reserved for stdin, stdout, and stderr)
 	rootDir Directory
 }
 
 // Create an empty in-memory FileSystem rooted at "/".
 func CreateEmptyMemoryFS() MemoryFS {
-	// the root directory is unnamed, which is unintentional
-	return MemoryFS{activeFDs: make(map[int]File), smallestAvailableFD: 3, rootDir: Directory{}}
+	mfs := MemoryFS{
+		activeFDs:           make(map[int]*File),
+		smallestAvailableFD: 3,
+		rootDir:             Directory{},
+	}
+	mfs.rootDir.inode = Inode{
+		name: "",
+	}
+	mfs.rootDir.children = make(map[string]Node)
+	return mfs
 }
+
+// Operations from FileSystem =================================================
 
 // See the spec for FileSystem::Mkdir.
 func (mfs *MemoryFS) Mkdir(path string) (success bool, err error) {
@@ -28,79 +39,85 @@ func (mfs *MemoryFS) Mkdir(path string) (success bool, err error) {
 
 // See the spec for FileSystem::Open.
 func (mfs *MemoryFS) Open(filePath string, mode fsraft.OpenMode, flags fsraft.OpenFlags) (fileDescriptor int, err error) {
-	//fmt.Printf("Starting Open(%v, %v, %v)\n", filePath, mode.String(), flags)
+	ad.Debug(ad.TRACE, "Starting Open(%v, %v, %v)", filePath, mode.String(), flags)
 	fileDescriptor = -1 // in case we return early, set it here
 
-	dirPath, fileName := path.Split(filePath)
-	dirs := strings.Split(dirPath, "/")
-	if dirs[0] != "" {
-		// There is something before the first "/", so this is an invalid path
-		err = fsraft.InvalidPath
-		return
-	}
-	dirs = dirs[1:]
+	currentDir, node, fileName, existence := mfs.followPath(filePath)
+	ad.Debug(ad.TRACE, "Got currentDir=%+v, node=%+v, fileName=%v, existence=%v", currentDir, node, fileName, existence)
 
-	currentDir := mfs.rootDir
-	for _, dir := range dirs {
-		if currentDir.HasChildNamed(dir) {
-			child := currentDir.GetChildNamed(dir)
-			childDir, ok := child.(Directory)
-			if !ok {
-				err = fsraft.InvalidPath
-				return
-			}
-			currentDir = childDir
-		} else {
-			err = fsraft.InvalidPath
-			return
-		}
-	}
+	switch existence {
+	case NodeExists:
+		// proceed as normal
 
-	if !currentDir.HasChildNamed(fileName) {
-		// If the create flag is set
-		if (flags & fsraft.Create) != 0 {
+	case ParentExistsButNodeDoesNot:
+		if fsraft.FlagIsSet(flags, fsraft.Create) {
 			currentDir.CreateFile(fileName)
+			node = currentDir.GetChildNamed(fileName) // because node was set to nil before because it didn't exist
 		} else {
 			err = fsraft.NotFound
 			return
 		}
+
+	case ParentDoesNotExist:
+		err = fsraft.InvalidPath
+		return
 	}
 
-	file, isFile := currentDir.GetChildNamed(fileName).(File)
+	file, isFile := node.(*File)
+	ad.Assert(node != nil)
 	if !isFile {
-		// It's a directory
 		err = fsraft.IsDirectory
 		return
 	}
 
-	file.Open(mode, flags)
+	errFromFile := file.Open(mode, flags)
+	if errFromFile != nil {
+		return -1, errFromFile
+	}
 
 	// and now to assign it to a file descriptor
 	fileDescriptor = mfs.smallestAvailableFD
 	mfs.activeFDs[fileDescriptor] = file
 
-	// Maintain the invariant of smallestAvailableFD
+	// Maintain the invariant of smallestAvailableFD.
 	for {
 		_, fdIsActive := mfs.activeFDs[mfs.smallestAvailableFD]
 		if fdIsActive {
 			mfs.smallestAvailableFD++
+			// + 2 for the reserved FDs 0, 1, and 2.
+		} else if mfs.smallestAvailableFD > fsraft.MaxActiveFDs+2 {
+			// Rewind the operation
+			mfs.smallestAvailableFD = fileDescriptor
+			fileDescriptor = -1
+			err = fsraft.TooManyFDsOpen
+			return
 		} else {
+			// we've found our new smallestAvailableFD
 			break
 		}
 	}
 
-	//fmt.Printf("Returning FD=%v", fileDescriptor)
-	err = nil // Not sure if this is necessary? If not, just delete it
-	return
+	ad.Debug(ad.TRACE, "Done with Open(%v, %v, %v)", filePath, mode.String(), flags)
+	return // this is necessary for compilation, idk why
 }
 
 // See the spec for FileSystem::Close.
 func (mfs *MemoryFS) Close(fileDescriptor int) (success bool, err error) {
+	ad.Debug(ad.TRACE, "Closing FD %v", fileDescriptor)
 	file, fdIsActive := mfs.activeFDs[fileDescriptor]
 	if !fdIsActive {
-		return false, fsraft.InvalidFD
+		return false, fsraft.InactiveFD
 	}
-	return file.Close()
+	success, err = file.Close()
+	if success {
+		ad.Assert(err == nil)
+		delete(mfs.activeFDs, fileDescriptor)
+	}
+	if fileDescriptor < mfs.smallestAvailableFD {
+		mfs.smallestAvailableFD = fileDescriptor
+	}
+	ad.Debug(ad.TRACE, "Done closing FD %v", fileDescriptor)
+	return
 }
 
 // See the spec for FileSystem::Seek.
@@ -122,3 +139,56 @@ func (mfs *MemoryFS) Write(fileDescriptor int, numBytes int, data []byte) (bytes
 func (mfs *MemoryFS) Delete(path string) (success bool, err error) {
 	panic("TODO")
 }
+
+// Private helper methods =====================================================
+
+// Follow a path.
+// Assuming the path points to a valid Node, returns that Node, its parent, and NodeExists.
+// If the parent exists and is a Directory but it has no child with the specified name, then node=nil and existence=ParentExistsButNodeDoesNot
+// If the parent does not exist, parent is a File (not a Directory),  or the path is not well-formed,
+// returns parentDir=nil, node=nil, and existence=ParentDoesNotExist.
+// Regardless of existence, nodeName is the component of the path after the final "/".
+func (mfs *MemoryFS) followPath(filePath string) (parentDir *Directory, node Node, nodeName string, existence followPathResult) {
+	ad.Debug(ad.TRACE, "Following path %v", filePath)
+	dirPath, nodeName := path.Split(filePath)
+	if string(filePath[0]) != "/" {
+		return nil, nil, nodeName, ParentDoesNotExist
+	}
+	dirs := strings.Split(dirPath, "/")
+	dirs = dirs[1:] // Remove the empty string before the initial "/"
+
+	currentDir := &mfs.rootDir
+	// - 1 to get to the parent, we're not at the child yet
+	for _, dir := range dirs[:len(dirs)-1] {
+		ad.Debug(ad.TRACE, "currentDir=%+v", currentDir)
+		if currentDir.HasChildNamed(dir) {
+			child := currentDir.GetChildNamed(dir)
+			childDir, childIsDirectory := child.(*Directory)
+			// if the child is a file but the path expects it to be a directory because there are more path components
+			if !childIsDirectory {
+				ad.Debug(ad.TRACE, "Child named %v is not a directory", dir)
+				return nil, nil, nodeName, ParentDoesNotExist
+			}
+			currentDir = childDir
+		} else {
+			ad.Debug(ad.TRACE, "Child named %v does not exist", dir)
+			return nil, nil, nodeName, ParentDoesNotExist
+		}
+	}
+
+	if !currentDir.HasChildNamed(nodeName) {
+		ad.Debug(ad.TRACE, "Final child named %v does not exist, returning Parent exists but node does not", nodeName)
+		return currentDir, nil, nodeName, ParentExistsButNodeDoesNot
+	}
+
+	ad.Debug(ad.TRACE, "Node exists", nodeName)
+	return currentDir, currentDir.GetChildNamed(nodeName), nodeName, NodeExists
+}
+
+type followPathResult int
+
+const (
+	NodeExists followPathResult = iota
+	ParentExistsButNodeDoesNot
+	ParentDoesNotExist
+)

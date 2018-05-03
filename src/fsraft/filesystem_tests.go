@@ -256,7 +256,7 @@ func TestOpenCloseDeleteFD128(t *testing.T, fs FileSystem) {
 	}
 }
 
-//TODO coming next is one that hits MaxFDsOpen...
+//TODO coming next is one that hits TooManyFDsOpen...
 
 func TestOpenCloseDeleteAcrossDirectories(t *testing.T, fs FileSystem) {
 	HelpMkdir(t, fs, "/dir1")
@@ -300,18 +300,18 @@ func TestReadWriteBasic4(t *testing.T, fs FileSystem) {
 func TestSeekErrorBadFD(t *testing.T, fs FileSystem) {
 	// must open an invalid FD
 	_, err := fs.Seek(123456, 0, FromBeginning)
-	assertEquals(t, err, InvalidFD)
+	assertEquals(t, err, InactiveFD)
 }
 
 func TestSeekErrorBadOffsetOperation(t *testing.T, fs FileSystem) {
 	fd := HelpOpen(t, fs, "/bad-offset-operation.txt", ReadWrite, Create)
 	// Enforce only one option
 	_, err := fs.Seek(fd, 0, FromBeginning|FromCurrent|FromEnd)
-	assertEquals(t, err, InvalidFD)
+	assertEquals(t, err, InactiveFD)
 	_, err = fs.Seek(fd, 0, FromBeginning|FromCurrent)
-	assertEquals(t, err, InvalidFD)
+	assertEquals(t, err, InactiveFD)
 	_, err = fs.Seek(fd, 0, FromEnd|FromCurrent)
-	assertEquals(t, err, InvalidFD)
+	assertEquals(t, err, InactiveFD)
 
 	HelpClose(t, fs, fd)
 
@@ -322,7 +322,7 @@ func TestSeekErrorBadOffsetOperation(t *testing.T, fs FileSystem) {
 func TestSeekErrorBadOffset1(t *testing.T, fs FileSystem) {
 	fd := HelpOpen(t, fs, "/bad-offset-1byte.txt", ReadWrite, Create)
 	_, err := fs.Seek(fd, -1, FromBeginning) // can't be negative
-	assertEquals(t, err, InvalidFD)
+	assertEquals(t, err, InactiveFD)
 
 	_ = HelpSeek(t, fs, fd, 0, FromEnd)     // valid - at byte 0
 	_ = HelpSeek(t, fs, fd, 0, FromCurrent) // valid - at byte 0

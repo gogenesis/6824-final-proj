@@ -10,23 +10,44 @@ import (
 // All methods require a file to be Open()ed before calling (except Open(), obviously)
 // and panic when called on a non-open file.
 type File struct {
-	// TODO
+	inode Inode
+	isOpen bool
+	openMode fsraft.OpenMode
+	contents []byte
+	offset int // Invariant: offset >= 0
 }
 
 // Construct a file by calling createFile(fileName string) in the desired parent directory.
 
+// See Node::Name.
 func (file *File) Name() string {
-	panic("TODO")
+	return file.inode.Name()
 }
 
 // See FileSystem::Open.
 func (file *File) Open(mode fsraft.OpenMode, flags fsraft.OpenFlags) (err error) {
-	panic("TODO")
+	if file.isOpen {
+		return fsraft.AlreadyOpen
+	}
+	file.isOpen = true
+	file.openMode = mode
+	if fsraft.FlagIsSet(flags, fsraft.Truncate) {
+		file.contents = make([]byte, 0)
+		file.offset = 0
+	}
+	if fsraft.FlagIsSet(flags, fsraft.Append) {
+		file.offset = len(file.contents)
+	}
+	return nil
 }
 
 // See FileSystem::Close.
 func (file *File) Close() (success bool, err error) {
-	panic("TODO")
+	if !file.isOpen {
+		panic("Attempted to close a closed file! This should never happen because you need a fd to close a file.")
+	}
+	file.isOpen = false
+	return true, nil
 }
 
 // See FileSystem::Seek.
@@ -49,25 +70,3 @@ func (file *File) Delete() (success bool, err error) {
 	panic("TODO")
 	// Don't forget to call inode Delete (but other code will be necessary)
 }
-
-// Return the offset into the file.
-func (file *File) Offset() int {
-	panic("TODO")
-}
-
-
-//func (file *File) readLock() {
-//	file.Inode.readLock()
-//}
-//
-//func (file *File) readUnlock() {
-//	file.Inode.readUnlock()
-//}
-//
-//func (file *File) writeLock() {
-//	file.Inode.writeLock()
-//}
-//
-//func (file *File) writeUnlock() {
-//	file.Inode.writeUnlock()
-//}

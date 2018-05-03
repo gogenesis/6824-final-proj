@@ -1,54 +1,98 @@
 package memoryFS
 
-import ()
+import (
+	"ad"
+	"fmt"
+)
 
 // A directory in a filesystem.
 // This class extends Node.
 // This data structure is NOT THREADSAFE.
 type Directory struct {
-	// TODO
+	inode    Inode
+	children map[string]Node
 }
 
-// Directory has no zero-argument constructor.
+// Directory has no public constructor.
 // instead, create a root Directory by creating a MemoryFS and then create children of that root Directory.
+
+// See Node::Name.
+func (dir *Directory) Name() string {
+	return dir.inode.Name()
+}
 
 // Creates a Directory within this one named childName and returns it.
 // Panics if there is already a Node named childName in this directory.
-// The created Directory is not locked.
-func (dir *Directory) CreateDir(childName string) Directory {
-	panic("TODO")
+func (dir *Directory) CreateDir(childName string) *Directory {
+	return dir.createChild(childName, true).(*Directory)
 }
 
 // Creates a File within this Directory named childName and returns it.
 // Panics if there is already a Node named childName in this directory.
-// The created File is not opened or locked.
-func (dir *Directory) CreateFile(childName string) File {
-	panic("TODO")
+func (dir *Directory) CreateFile(childName string) *File {
+	return dir.createChild(childName, false).(*File)
+}
+
+// Creates a child, either a File if isDirectory is false or a Directory otherwise.
+// Panics if there is already a Node named childName in this directory.
+func (dir *Directory) createChild(childName string, isDirectory bool) Node {
+	if dir.HasChildNamed(childName) {
+		panic(fmt.Sprintf("Already has child named %v", childName))
+	}
+	ad.Debug(ad.TRACE, "Creating child named %v", childName)
+
+	var node Node
+	var inode Inode
+	if isDirectory {
+		// Create it with type Directory so we can access private field inode temporarily
+		dir := &Directory{}
+		dir.inode = inode
+		node = dir
+	} else {
+		file := &File{}
+		file.inode = inode
+		file.isOpen = false
+		node = file
+	}
+
+	// Initialize parameters
+	inode.name = childName
+
+	// Finish up
+	dir.children[childName] = node
+	return node
+
 }
 
 // Get the contents of this directory.
-// All children will be of type File or Directory.
-func (dir *Directory) Children() []interface{} {
-	panic("TODO")
+// Keys are names and values are the Nodes with those names.
+// Modifications to the returned map will not change this Directory's actual children.
+func (dir *Directory) Children() map[string]Node {
+	// Defensive copying needed so that mutations to the returned map don't affect state.
+	childrenCopy := make(map[string]Node)
+	for name, child := range dir.children {
+		childrenCopy[name] = child
+	}
+	return childrenCopy
 }
 
 // Checks whether a child of this directory is named childName.
 func (dir *Directory) HasChildNamed(childName string) bool {
-	panic("TODO")
+	_, hasChild := dir.children[childName]
+	return hasChild
 }
 
 // Get the child Node named ChildNode.
 // Panics if there is no such child.
-// The return value will be of type File or Directory, as appropriate.
-func (dir *Directory) GetChildNamed(childName string) interface{} {
-	panic("TODO")
+func (dir *Directory) GetChildNamed(childName string) Node {
+	if dir.HasChildNamed(childName) {
+		return dir.children[childName]
+	} else {
+		panic(fmt.Sprintf("I have no child named %v!", childName))
+	}
 }
 
-// From FileSystem::Delete
+// See FileSystem::Delete.
 func (dir *Directory) Delete() {
-	panic("TODO")
-}
-
-func (dir *Directory) Name() string {
 	panic("TODO")
 }

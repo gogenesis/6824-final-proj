@@ -40,39 +40,42 @@ func OneClerkFiveServersNoErrors(t *testing.T) FileSystem {
 
 func assert(t *testing.T, cond bool) {
 	if !cond {
-		t.Fatalf("Assertion error!")
+		failWithMessageAndStackTrace(t, "Assertion error!")
 	}
 }
 
 func assertNoError(t *testing.T, e error) {
 	if e != nil {
-		t.Fatalf(e.Error())
+		failWithMessageAndStackTrace(t, "Assertion error! Expected no error, got \"%v\"", e.Error())
 	}
 }
 
 func assertEquals(t *testing.T, expected, actual interface{}) {
 	if expected != actual {
-		t.Fatalf("Assertion error! Expected %+v, got %+v\n", expected, actual)
+		failWithMessageAndStackTrace(t, "Assertion error! Expected %+v, got %+v\n", expected, actual)
 	}
 }
 
 func assertValidFD(t *testing.T, fd int) {
-	if fd <= 3 {
-		t.Fatalf(fmt.Sprintf("Invalid fd %d.", fd))
+	if fd < 3 {
+		failWithMessageAndStackTrace(t, fmt.Sprintf("Impossible file descriptor %d.", fd))
 	}
 }
 
 func assertExplain(t *testing.T, cond bool, format string, a ...interface{}) {
 	if !cond {
-		t.Fatalf(fmt.Sprintf("Assertion error! %s\nStack trace:\n%v", fmt.Sprintf(format, a...),
-			// skip=1 to start the stack trace with assertExplain.
-			stackTrace(1)))
+		failWithMessageAndStackTrace(t, "Assertion error! %s", fmt.Sprintf(format, a...))
 	}
+}
+
+func failWithMessageAndStackTrace(t *testing.T, format string, a ...interface{}) {
+	// skip StackTrace, this function, and the assert function
+	t.Fatalf("%v\n%v", fmt.Sprintf(format, a...), stackTrace(3))
 }
 
 // Prints the stack trace, not including this function, to stdout.
 func printStackTrace() {
-	// skip=2 to skip two functions: StackTrace and assertExplain.
+	// skip=2 to skip two functions: StackTrace and printStackTrace.
 	fmt.Println(stackTrace(2))
 
 }
