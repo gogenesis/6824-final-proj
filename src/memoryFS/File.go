@@ -10,11 +10,11 @@ import (
 // All methods require a file to be Open()ed before calling (except Open(), obviously)
 // and panic when called on a non-open file.
 type File struct {
-	inode Inode
-	isOpen bool
+	inode    Inode
+	isOpen   bool
 	openMode fsraft.OpenMode
 	contents []byte
-	offset int // Invariant: offset >= 0
+	offset   int // Invariant: offset >= 0
 }
 
 // Construct a file by calling createFile(fileName string) in the desired parent directory.
@@ -67,6 +67,5 @@ func (file *File) Write(numBytes int, data []byte) (bytesWritten int, err error)
 
 // See FileSystem::Delete.
 func (file *File) Delete() (success bool, err error) {
-	panic("TODO")
-	// Don't forget to call inode Delete (but other code will be necessary)
+	return file.inode.Delete()
 }

@@ -4,7 +4,6 @@ package fsraft
 // These are loosely based off the standard POSIX/C error codes available at
 // http://www.virtsync.com/c-error-codes-include-errno but with names changed for readability.
 // The error numbers here *DO NOT* correspond to the numbers of POSIX error codes!
-// For example, InvalidPath (ENOTDIR) is 1 here, but 20 in the official standard.
 // This was done so that we would not need to define unused error codes or worry about
 // which order errors appear in in the standard.
 // When you add a new ErrorCode, be sure to add it to the ValuesToStrings map!
@@ -12,8 +11,7 @@ package fsraft
 type ErrorCode int
 
 const (
-	InvalidPath       ErrorCode = iota // A component of the path prefix is not a directory (ENOTDIR).
-	NotFound                           // No such file or directory (ENOENT)
+	NotFound          ErrorCode = iota // No such file or directory (ENOENT) or a path component is not a directory (ENOTDIR).
 	IsDirectory                        // The named file is a directory, and the operation is only valid on files. (EISDIR).
 	TooManyFDsOpen                     // The process has already reached its limit for open file descriptors (EMFILE).
 	InactiveFD                         // The specified file descriptor is not an active file descriptor (EBADF).
@@ -28,7 +26,6 @@ const (
 )
 
 var valuesToStrings = map[ErrorCode]string{
-	InvalidPath:       "InvalidPath",
 	NotFound:          "NotFound",
 	IsDirectory:       "IsDirectory",
 	TooManyFDsOpen:    "TooManyFDsOpen",

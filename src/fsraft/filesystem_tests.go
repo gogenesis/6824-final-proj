@@ -24,7 +24,6 @@ func HelpOpen(t *testing.T, fs FileSystem,
 	fd, err := fs.Open(path, mode, flags)
 	assertNoError(t, err)
 	assertValidFD(t, fd)
-	//assertExplain(t, err != nil, "err opening fd %d", fd)
 	return fd
 }
 

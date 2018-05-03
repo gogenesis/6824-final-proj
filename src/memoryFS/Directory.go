@@ -93,6 +93,6 @@ func (dir *Directory) GetChildNamed(childName string) Node {
 }
 
 // See FileSystem::Delete.
-func (dir *Directory) Delete() {
-	panic("TODO")
+func (dir *Directory) Delete() (success bool, err error) {
+	return dir.inode.Delete()
 }

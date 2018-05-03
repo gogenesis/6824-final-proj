@@ -6,7 +6,7 @@ type FileSystem interface {
 	//
 	// Path is a relative path name beginning from the top-level synchronized directory and
 	// ending in the directory to be created.
-	// Possible errors are InvalidPath, TryAgain, IOError, NoMoreSpace, and AlreadyExists.
+	// Possible errors are NotFound, TryAgain, IOError, NoMoreSpace, and AlreadyExists.
 	// Success is false iff err is non-nil.
 	Mkdir(path string) (success bool, err error)
 
@@ -19,7 +19,7 @@ type FileSystem interface {
 	// If the file does not exist and the Create flag is included, creates it and then opens it.
 	// If the file does not exist and the Create flag is not included, returns NotFound error.
 	// If the Truncate flag is set, truncates the file size to 0 (if opening succeeds).
-	// Possible errors are InvalidPath, IsDirectory, TooManyFDsOpen, NotFound, AlreadyOpen, and TryAgain.
+	// Possible errors are IsDirectory, TooManyFDsOpen, NotFound, AlreadyOpen, and TryAgain.
 	// fileDescriptor == -1 if and only iff err is non-nil.
 	Open(path string, mode OpenMode, flags OpenFlags) (fileDescriptor int, err error)
 
@@ -68,12 +68,9 @@ type FileSystem interface {
 
 	// Deletes a name from the filesystem.
 	//
-	// If the name is a file and no processes have the file open, the file
-	// is deleted and the space it was using is made available for reuse.
-	// If the name is a file and any processes still have the file open, the file will
-	// remain in existence until the last file descriptor referring to it is closed.
-	// If the name is a directory, deletes it if it is empty or otherwise returns a DirectoryNotEmpty ErrorCode.
-	// Possible errors are InvalidPath, NotFound, DirectoryNotEmpty, TryAgain, or IOError.
+	// If the name is a file, the file is deleted and the space it was using is made available for reuse.
+	// If the name is a directory, deletes it if it is empty or otherwise returns DirectoryNotEmpty.
+	// Possible errors are NotFound, DirectoryNotEmpty, TryAgain, or IOError.
 	// Success is false if and only if err is non-nil.
 	Delete(path string) (success bool, err error)
 

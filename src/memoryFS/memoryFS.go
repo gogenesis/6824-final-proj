@@ -59,7 +59,7 @@ func (mfs *MemoryFS) Open(filePath string, mode fsraft.OpenMode, flags fsraft.Op
 		}
 
 	case ParentDoesNotExist:
-		err = fsraft.InvalidPath
+		err = fsraft.NotFound
 		return
 	}
 
@@ -136,8 +136,29 @@ func (mfs *MemoryFS) Write(fileDescriptor int, numBytes int, data []byte) (bytes
 }
 
 // See the spec for FileSystem::Delete.
-func (mfs *MemoryFS) Delete(path string) (success bool, err error) {
-	panic("TODO")
+func (mfs *MemoryFS) Delete(filePath string) (success bool, err error) {
+	ad.Debug(ad.TRACE, "Starting Delete(%v)", filePath)
+	defer ad.Debug(ad.TRACE, "Done with Delete(%v)", filePath)
+
+	currentDir, node, nodeName, existence := mfs.followPath(filePath)
+	ad.Debug(ad.TRACE, "Got currentDir=%+v, node=%+v, nodeName=%v, existence=%v", currentDir, node, nodeName, existence)
+
+	switch existence {
+	case NodeExists:
+		// proceed as normal
+	case ParentExistsButNodeDoesNot:
+		fallthrough
+	case ParentDoesNotExist:
+		return false, fsraft.NotFound
+	}
+
+	dir, nodeIsDirectory := node.(*Directory)
+	if nodeIsDirectory && len(dir.children) > 0 {
+		return false, fsraft.DirectoryNotEmpty
+	}
+
+	node.Delete()
+	return
 }
 
 // Private helper methods =====================================================
