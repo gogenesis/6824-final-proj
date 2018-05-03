@@ -74,7 +74,7 @@ func assertEqualsFail(t *testing.T, expected, actual interface{}) {
 }
 
 func assertValidFD(t *testing.T, fd int) {
-   if fd < 3 { // less than 3 would be on standard file IO or negative
+   if fd <= 3 {
       t.Fatalf(fmt.Sprintf("invalid fd %d", fd))
    }
 }
