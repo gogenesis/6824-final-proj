@@ -74,8 +74,15 @@ func assertEqualsFail(t *testing.T, expected, actual interface{}) {
 }
 
 func assertValidFD(t *testing.T, fd int) {
-   if fd < 0 { // file descriptors can be 0 right?
+   if fd < 3 { // less than 3 would be on standard file IO or negative
       t.Fatalf(fmt.Sprintf("invalid fd %d", fd))
+   }
+}
+
+func assertExplain(t *testing.T, cond bool, format string, a ...interface{}) {
+   if !cond {
+      // we want a stacktrace so easy way is to panic ... unless t.Fatalf does? 
+      panic(fmt.Sprintf("Assertion error! %s", fmt.Sprintf(format, a...)))
    }
 }
 
