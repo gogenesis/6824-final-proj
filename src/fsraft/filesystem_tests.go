@@ -140,16 +140,13 @@ func HelpReadWrite(t *testing.T, fs FileSystem,
 
 // Whenever you add a new functionality test, be sure to add it to this list.
 // This list is used in test_setup.go to run every functionality test on every difficulty.
-//
-// "It will be a big beautiful list..."
-// "... the huuugest list... and the students are gonna run it."
-//
 var FunctionalityTests = []func(t *testing.T, fs FileSystem){
-	TestOpenCloseBasic,
+	TestBasicOpenClose,
 	TestOpenROClose,
-	TestOpenRWClose,
+	TestOpenROClose,
 	TestOpenROClose4,
-	TestOpenRWClose64,
+	TestOpenROClose64,
+	TestOpenRWClose,
 	TestOpenRWClose4,
 	TestOpenRWClose64,
 	TestOpenCloseLeastFD,
@@ -168,17 +165,13 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 
 // ===== BEGIN OPEN CLOSE TESTS ======
 
-func TestOpenCloseBasic(t *testing.T, fs FileSystem) {
+func TestBasicOpenClose(t *testing.T, fs FileSystem) {
 	HelpOpenClose(t, fs, "/foo.txt", ReadWrite, Create)
 }
 
 // Do we deal with RW / RO writing issues or are those the perimissions we are
 // ignoring... bc this could collapse
 func TestOpenROClose(t *testing.T, fs FileSystem) {
-	HelpOpenClose(t, fs, "/fooRO.txt", ReadOnly, Create)
-}
-
-func TestOpenRWClose(t *testing.T, fs FileSystem) {
 	HelpOpenClose(t, fs, "/fooRO.txt", ReadOnly, Create)
 }
 
@@ -190,13 +183,19 @@ func TestOpenROClose64(t *testing.T, fs FileSystem) {
 	HelpBatchOpenClose(t, fs, 64, "/str-2-with-a-%d", ReadOnly, Create)
 }
 
+func TestOpenRWClose(t *testing.T, fs FileSystem) {
+	HelpOpenClose(t, fs, "/fooRO.txt", ReadOnly, Create)
+}
+
 func TestOpenRWClose4(t *testing.T, fs FileSystem) {
 	HelpBatchOpenClose(t, fs, 4, "/str-3-with-a-%d", ReadWrite, Create)
 }
 
 func TestOpenRWClose64(t *testing.T, fs FileSystem) {
 	HelpBatchOpenClose(t, fs, 64, "/str-4-with-a-%d", ReadWrite, Create)
-} // holding off on pushing open close more
+}
+
+//should //func TestOpenRW
 
 func TestOpenCloseLeastFD(t *testing.T, fs FileSystem) {
 	fd3A := HelpOpen(t, fs, "/A.txt", ReadWrite, Create)
@@ -222,13 +221,6 @@ func TestOpenCloseLeastFD(t *testing.T, fs FileSystem) {
 	HelpClose(t, fs, fd3C)
 	HelpClose(t, fs, fd4)
 }
-
-// XXX PLZ PING ME BEFORE BELIEVING ANY FAILURES IN THE BELOW TESTS RIGHT NOW!
-// There are some semmantics to discuss to make sure the tests are aligned
-// with the guarantees of our system, and test and dev should stay coupled
-// and progress together. Consider this a sync point where I want to
-// re-validate the below tests before throwing a bunch of potentially bogus
-// issues... they should be mostly good but want to look again tomorrow.
 
 // open and close files checking 128 FD limit that fd is always increasing
 func TestOpenCloseDeleteFD128(t *testing.T, fs FileSystem) {
@@ -256,6 +248,11 @@ func TestOpenCloseDeleteFD128(t *testing.T, fs FileSystem) {
 }
 
 //TODO coming next is one that hits TooManyFDsOpen...
+// open an open file
+// close a closed file
+
+//  VVVV keeps moving down as tests begin passing and stay passing!
+//  ================== the line in the sand ====================
 
 func TestOpenCloseDeleteAcrossDirectories(t *testing.T, fs FileSystem) {
 	HelpMkdir(t, fs, "/dir1")
