@@ -394,17 +394,17 @@ func TestSeekErrorBadOffset1(t *testing.T, fs FileSystem) {
 	_, err := fs.Seek(fd, -1, FromBeginning) // can't be negative
 	assertEquals(t, err, InactiveFD)
 
-	_ = HelpSeek(t, fs, fd, 0, FromEnd)     // valid - at byte 0
-	_ = HelpSeek(t, fs, fd, 0, FromCurrent) // valid - at byte 0
+	HelpSeek(t, fs, fd, 0, FromEnd)     // valid - at byte 0
+	HelpSeek(t, fs, fd, 0, FromCurrent) // valid - at byte 0
 
-	_ = HelpSeek(t, fs, fd, 1, FromBeginning) // valid - off end of file at byte 1
-	_ = HelpSeek(t, fs, fd, 2, FromBeginning) // valid - off end of file at byte 2
-	_ = HelpSeek(t, fs, fd, 3, FromBeginning) // valid - off end of file at byte 3
+	HelpSeek(t, fs, fd, 1, FromBeginning) // valid - off end of file at byte 1
+	HelpSeek(t, fs, fd, 2, FromBeginning) // valid - off end of file at byte 2
+	HelpSeek(t, fs, fd, 3, FromBeginning) // valid - off end of file at byte 3
 
-	_ = HelpSeek(t, fs, fd, 3, FromBeginning) // valid - off end of file at byte 3
-	_ = HelpSeek(t, fs, fd, 2, FromBeginning) // valid - off end of file at byte 2
-	_ = HelpSeek(t, fs, fd, 1, FromBeginning) // valid - off end of file at byte 1
-	_ = HelpSeek(t, fs, fd, 0, FromBeginning) // valid - at byte 0
+	HelpSeek(t, fs, fd, 3, FromBeginning) // valid - off end of file at byte 3
+	HelpSeek(t, fs, fd, 2, FromBeginning) // valid - off end of file at byte 2
+	HelpSeek(t, fs, fd, 1, FromBeginning) // valid - off end of file at byte 1
+	HelpSeek(t, fs, fd, 0, FromBeginning) // valid - at byte 0
 
 	n := HelpWrite(t, fs, fd, "c")
 	assertExplain(t, n == 1, "the wr didn't wr 1 byte")
