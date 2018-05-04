@@ -15,8 +15,7 @@ func HelpDelete(t *testing.T, fs FileSystem,
 	pathname string) {
 	success, err := fs.Delete(pathname)
 	assertNoError(t, err)
-	assertEquals(t, success, true)
-	assertExplain(t, success, "err deleting file %s", pathname)
+	assertExplain(t, success, "non-success deleting file %s", pathname)
 }
 
 func HelpOpen(t *testing.T, fs FileSystem,
@@ -25,6 +24,17 @@ func HelpOpen(t *testing.T, fs FileSystem,
 	assertNoError(t, err)
 	assertValidFD(t, fd)
 	return fd
+}
+
+func HelpTestOpenNotFound(t *testing.T, fs FileSystem,
+   mode OpenMode, flags OpenFlags) {
+   fd, err := fs.Open("/dirs/dont/exist/file", mode, flags)
+	assertExplain(t, err == NotFound, "1st case didnt produce error")
+	assertExplain(t, fd == -1, "fd should be negative on error")
+
+   fd, err = fs.Open("f_wo_root_slash", mode, flags) // should we handle this?
+	assertExplain(t, err == NotFound, "2nd case didnt produce error")
+	assertExplain(t, fd == -1, "fd should be negative on error")
 }
 
 func HelpClose(t *testing.T, fs FileSystem,
@@ -40,38 +50,28 @@ func HelpOpenClose(t *testing.T, fs FileSystem,
 	HelpClose(t, fs, HelpOpen(t, fs, path, mode, flags))
 }
 
-//@sync naming convention with HelpBatchDelete
 func HelpBatchOpen(t *testing.T, fs FileSystem,
 	nFiles int, fmtStr string, mode OpenMode, flags OpenFlags) []int {
 	fds := make([]int, nFiles)
-	// open N files with same mode and flags
 	for ix := 0; ix < nFiles; ix++ {
 		fds[ix] = HelpOpen(t, fs, fmt.Sprintf(fmtStr, ix), mode, flags)
 	}
 	return fds
 }
 
-func HelpBatchCloseFDs(t *testing.T, fs FileSystem,
-	fds []int) {
-	for ix := 0; ix < len(fds); ix++ {
-		HelpClose(t, fs, fds[ix])
-	}
+func HelpBatchClose(t *testing.T, fs FileSystem, fds []int) {
+	for ix := 0; ix < len(fds); ix++ { HelpClose(t, fs, fds[ix]) }
 }
 
-//@sync naming convention with HelpBatchDelete
 func HelpBatchOpenClose(t *testing.T, fs FileSystem,
 	nFiles int, fmtStr string, mode OpenMode, flags OpenFlags) {
 	fds := HelpBatchOpen(t, fs, nFiles, fmtStr, mode, flags)
-	HelpBatchCloseFDs(t, fs, fds)
+	HelpBatchClose(t, fs, fds)
 }
 
-//@sync naming convention with HelpBatchOpenClose
 func HelpBatchDelete(t *testing.T, fs FileSystem,
 	nFiles int, fmtStr string) {
-	// delete all files
-	for ix := 0; ix < nFiles; ix++ {
-		HelpDelete(t, fs, fmt.Sprintf(fmtStr, ix))
-	}
+	for ix := 0; ix < nFiles; ix++ { HelpDelete(t, fs, fmt.Sprintf(fmtStr, ix)) }
 }
 
 // ====== END OPEN CLOSE DELETE HELPERS =====
@@ -129,11 +129,11 @@ func HelpReadWrite(t *testing.T, fs FileSystem,
 	HelpSeek(t, fs, fd, 0, FromBeginning)
 	nBytes := HelpWrite(t, fs, fd, contents)
 	assertExplain(t, nBytes == len(contents),
-		"%d bytes written vs %d", nBytes, len(contents))
+		           "%d bytes written vs %d", nBytes, len(contents))
 	nBytes, data := HelpRead(t, fs, fd, contents, len(contents))
 	for bite := 0; bite < len(contents); bite++ {
 		assertExplain(t, data[bite] == contents[bite],
-			"read data %s vs %s", data[bite], contents[bite])
+			           "read data %s vs %s", data[bite], contents[bite])
 	}
 	return nBytes
 }
@@ -142,6 +142,11 @@ func HelpReadWrite(t *testing.T, fs FileSystem,
 // This list is used in test_setup.go to run every functionality test on every difficulty.
 var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestBasicOpenClose,
+   TestDeleteNotFound,
+   TestCloseClosed,
+   TestOpenOpened,
+   TestOpenNotFound,
+   TestOpenAlreadyExists,
 	TestOpenROClose,
 	TestOpenROClose,
 	TestOpenROClose4,
@@ -150,7 +155,10 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestOpenRWClose4,
 	TestOpenRWClose64,
 	TestOpenCloseLeastFD,
-	TestOpenCloseDeleteFD128,
+	TestOpenCloseDeleteMaxFD,
+   TestOpenCloseDeleteRoot,
+   TestOpenCloseDeleteRootMax,
+   // ========= the line in the sand =======
 	TestOpenCloseDeleteAcrossDirectories,
 	TestReadWriteBasic,
 	TestReadWriteBasic4,
@@ -159,8 +167,6 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestSeekErrorBadOffset1,
 	TestMkdir,
 	TestMkdirTree,
-	//many more to come after milestone 1
-	//and many more if we still aim to support a real linux driver
 }
 
 // ===== BEGIN OPEN CLOSE TESTS ======
@@ -169,8 +175,43 @@ func TestBasicOpenClose(t *testing.T, fs FileSystem) {
 	HelpOpenClose(t, fs, "/foo.txt", ReadWrite, Create)
 }
 
-// Do we deal with RW / RO writing issues or are those the perimissions we are
-// ignoring... bc this could collapse
+func TestDeleteNotFound(t *testing.T, fs FileSystem) {
+	success, err := fs.Delete("/this-file-doesnt-exist")
+	assertExplain(t, !success, "delete on missing file was successful")
+	assertExplain(t, err == NotFound, "err was not NotFound")
+}
+
+func TestCloseClosed(t *testing.T, fs FileSystem) {
+	success, err := fs.Close(5) //arbirtary closed FD
+	assertExplain(t, !success, "close on closed FD was successful")
+	assertExplain(t, err == InactiveFD, "error needs to show issue with FD")
+}
+
+func TestOpenOpened(t *testing.T, fs FileSystem) {
+   fd := HelpOpen(t, fs, "/file-open-successfully", ReadWrite, Create)
+	fd2, err := fs.Open("/file-open-successfully", ReadWrite, Create)
+	assertExplain(t, err == AlreadyOpen, "opened file returned err %s", err)
+	assertExplain(t, fd2 == -1, "-1 needed on open error")
+   HelpClose(t, fs, fd)
+   HelpDelete(t, fs, "/file-open-successfully")
+}
+
+func TestOpenNotFound(t *testing.T, fs FileSystem) {
+   HelpTestOpenNotFound(t, fs, ReadWrite, Append)
+   HelpTestOpenNotFound(t, fs, ReadWrite, Create)
+   HelpTestOpenNotFound(t, fs, ReadWrite, Truncate)
+   HelpTestOpenNotFound(t, fs, ReadOnly, Append)
+   HelpTestOpenNotFound(t, fs, ReadOnly, Create)
+   HelpTestOpenNotFound(t, fs, ReadOnly, Truncate)
+}
+
+func TestOpenAlreadyExists(t *testing.T, fs FileSystem) {
+   _ = HelpOpen(t, fs, "/first_file", ReadWrite, Create)
+   fd, err := fs.Open("/first_file", ReadWrite, Create)
+	assertExplain(t, err == AlreadyOpen, "wanted AlreadyOpen but err %s", err)
+	assertExplain(t, fd == -1, "-1 needed on open error")
+}
+
 func TestOpenROClose(t *testing.T, fs FileSystem) {
 	HelpOpenClose(t, fs, "/fooRO.txt", ReadOnly, Create)
 }
@@ -194,8 +235,6 @@ func TestOpenRWClose4(t *testing.T, fs FileSystem) {
 func TestOpenRWClose64(t *testing.T, fs FileSystem) {
 	HelpBatchOpenClose(t, fs, 64, "/str-4-with-a-%d", ReadWrite, Create)
 }
-
-//should //func TestOpenRW
 
 func TestOpenCloseLeastFD(t *testing.T, fs FileSystem) {
 	fd3A := HelpOpen(t, fs, "/A.txt", ReadWrite, Create)
@@ -222,37 +261,68 @@ func TestOpenCloseLeastFD(t *testing.T, fs FileSystem) {
 	HelpClose(t, fs, fd4)
 }
 
-// open and close files checking 128 FD limit that fd is always increasing
-func TestOpenCloseDeleteFD128(t *testing.T, fs FileSystem) {
+// open and close files checking all FDs open correctly up to limit,
+// open a few past the limit, confirm we get errors, then close and delete all.
+func TestOpenCloseDeleteMaxFD(t *testing.T, fs FileSystem) {
+   maxFDCount := 64 //XXX update after David confirms
 	prevFD := 2
-	//@dedup use something like HelpBatchOpen ?
-	for ix := 0; ix < 128; ix++ {
-		fd := HelpOpen(t, fs, fmt.Sprintf("/least-fd-%d.txt", ix),
-			ReadWrite, Create)
-		assertEquals(t, fd > prevFD, true)
-		prevFD = fd
+   fds := make([]int, maxFDCount)
+	for ix := 0; ix < maxFDCount; ix++ {
+		fds[ix] = HelpOpen(t, fs, fmt.Sprintf("/max-fd-%d.txt", ix),
+                          ReadWrite, Create)
+		assertEquals(t, fds[ix] > prevFD, true)
+		prevFD = fds[ix]
 	}
-	//
-	// please use assertExplain() to give helpful context to the failure
-	//
-	// my test system auto-dedups bugs if continuous testing hits dup failures
-	// which facilitates rapid bug shakedowns to see the overall system health
-	//
-	assertExplain(t, prevFD == 127, "wanted first 127 but ended with %d", prevFD)
+	assertExplain(t, prevFD == maxFDCount + 2,
+                 "opened max %d but ended with %d", maxFDCount, prevFD)
 
-	//@dedup probably going to need a batch close and delete helper...
-	for ix := 0; ix < 128; ix++ {
-		HelpClose(t, fs, ix)
-		HelpDelete(t, fs, fmt.Sprintf("/least-fd-%d.txt", ix))
-	}
+	fd, err := fs.Open("/max-fd-one-more1.txt", ReadWrite, Create)
+   assertExplain(t, err == TooManyFDsOpen, "RW 1 past max opened err: %s", err)
+	assertExplain(t, fd == -1, "-1 needed on open error")
+	fd, err = fs.Open("/max-fd-one-more2.txt", ReadWrite, Create)
+   assertExplain(t, err == TooManyFDsOpen, "RW 2 past max opened err: %s", err)
+	assertExplain(t, fd == -1, "-1 needed on open error")
+	fd, err = fs.Open("/max-fd-one-more3.txt", ReadWrite, Create)
+   assertExplain(t, err == TooManyFDsOpen, "RW 3 past max opened err: %s", err)
+	assertExplain(t, fd == -1, "-1 needed on open error")
+
+	fd, err = fs.Open("/max-fd-one-more1-ro.txt", ReadOnly, Create)
+   assertExplain(t, err == TooManyFDsOpen, "R0 4 past max opened err: %s", err)
+	assertExplain(t, fd == -1, "-1 needed on open error")
+	fd, err = fs.Open("/max-fd-one-more2-ro.txt", ReadOnly, Create)
+   assertExplain(t, err == TooManyFDsOpen, "R0 5 past max opened err: %s", err)
+	assertExplain(t, fd == -1, "-1 needed on open error")
+	fd, err = fs.Open("/max-fd-one-more3-ro.txt", ReadOnly, Create)
+   assertExplain(t, err == TooManyFDsOpen, "R0 6 past max opened err: %s", err)
+	assertExplain(t, fd == -1, "-1 needed on open error")
+
+   HelpBatchClose(t, fs, fds)
+   HelpBatchDelete(t, fs, maxFDCount, "/max-fd-%d.txt")
 }
 
-//TODO coming next is one that hits TooManyFDsOpen...
-// open an open file
-// close a closed file
+func TestOpenCloseDeleteRoot(t *testing.T, fs FileSystem) {
+	fd1 := HelpOpen(t, fs, "/foo", ReadWrite, Create)
+	fd2 := HelpOpen(t, fs, "/bar", ReadWrite, Create)
+	fd3 := HelpOpen(t, fs, "/baz", ReadWrite, Create)
+	HelpClose(t, fs, fd1)
+	HelpClose(t, fs, fd2)
+	HelpClose(t, fs, fd3)
+	HelpDelete(t, fs, "/foo")
+	HelpDelete(t, fs, "/bar")
+	HelpDelete(t, fs, "/baz")
+}
 
-//  VVVV keeps moving down as tests begin passing and stay passing!
+func TestOpenCloseDeleteRootMax(t *testing.T, fs FileSystem) {
+   maxFD := 64 //XXX update once we set it!!
+   fds := HelpBatchOpen(t, fs, 64, "/max-root-opens-%d", ReadWrite, Create)
+   HelpBatchClose(t, fs, fds)
+   HelpBatchDelete(t, fs, maxFD, "/max-root-opens-%d")
+}
+
+// TODO next is same set of tests involving subdirs
+
 //  ================== the line in the sand ====================
+//  keeps moving down as tests begin passing and stay passing!
 
 func TestOpenCloseDeleteAcrossDirectories(t *testing.T, fs FileSystem) {
 	HelpMkdir(t, fs, "/dir1")
@@ -290,6 +360,10 @@ func TestReadWriteBasic4(t *testing.T, fs FileSystem) {
 }
 
 // TODO longer file paths and contents coming soon...
+
+// TODO need a debug interface to simulate the test datastore runs out of space
+
+// TODO need a debug interface to simulate the test datastore has an IO error
 
 // ===== BEGIN SEEK DELETE TESTS =====
 
