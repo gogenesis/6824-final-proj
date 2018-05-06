@@ -84,8 +84,8 @@ func (mfs *MemoryFS) Open(filePath string, mode fsraft.OpenMode, flags fsraft.Op
 		_, fdIsActive := mfs.activeFDs[mfs.smallestAvailableFD]
 		if fdIsActive {
 			mfs.smallestAvailableFD++
-			// + 2 for the reserved FDs 0, 1, and 2.
-		} else if mfs.smallestAvailableFD > fsraft.MaxActiveFDs+2 {
+			// + 3 for the reserved FDs 0, 1, and 2.
+		} else if mfs.smallestAvailableFD > fsraft.MaxActiveFDs+3 {
 			// Rewind the operation
 			mfs.smallestAvailableFD = fileDescriptor
 			fileDescriptor = -1
