@@ -167,7 +167,7 @@ func (mfs *MemoryFS) Delete(filePath string) (success bool, err error) {
 	}
 
 	node.Delete()
-	return
+	return true, nil
 }
 
 // Private helper methods =====================================================

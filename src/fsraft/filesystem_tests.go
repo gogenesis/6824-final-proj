@@ -14,13 +14,13 @@ import "fmt"
 func HelpDelete(t *testing.T, fs FileSystem,
 	pathname string) {
 	success, err := fs.Delete(pathname)
-	assertExplain(t, success && err == nil, "err deleting %s", pathname)
+	assertExplain(t, success && err == nil, "err %s deleting %s", err, pathname)
 }
 
 func HelpOpen(t *testing.T, fs FileSystem,
 	path string, mode OpenMode, flags OpenFlags) int {
 	fd, err := fs.Open(path, mode, flags)
-	assertExplain(t, fd > 0 && err == nil, "err opening %s", path)
+	assertExplain(t, fd > 0 && err == nil, "err %s opening %s", err, path)
 	return fd
 }
 
@@ -266,10 +266,11 @@ func TestOpenCloseLeastFD(t *testing.T, fs FileSystem) {
 func TestOpenCloseDeleteMaxFD(t *testing.T, fs FileSystem) {
 	maxFDCount := MaxActiveFDs
 	maxFD := maxFDCount + 2 //max is offby1, & stdin, out, err...
+	fmtStr := "/max-fd-%d.txt"
 	prevFD := 0
 	fds := make([]int, maxFDCount)
 	for ix := 0; ix < maxFDCount; ix++ {
-		fds[ix] = HelpOpen(t, fs, fmt.Sprintf("/max-fd-%d.txt", ix),
+		fds[ix] = HelpOpen(t, fs, fmt.Sprintf(fmtStr, ix),
 			ReadWrite, Create)
 		assertExplain(t, fds[ix] > prevFD, "%d -> ? %d", prevFD, fds[ix])
 		prevFD = fds[ix]
@@ -298,7 +299,7 @@ func TestOpenCloseDeleteMaxFD(t *testing.T, fs FileSystem) {
 	assertExplain(t, fd == -1, "-1 needed on open error")
 
 	HelpBatchClose(t, fs, fds)
-	//HelpBatchDelete(t, fs, maxFDCount, "/max-fd-%d.txt") // BUG?
+	HelpBatchDelete(t, fs, maxFDCount, fmtStr)
 }
 
 func TestOpenCloseDeleteRoot(t *testing.T, fs FileSystem) {
@@ -389,7 +390,7 @@ func TestSeekErrorBadOffsetOperation(t *testing.T, fs FileSystem) {
 	_, err = fs.Seek(fd, 0, 2)
 	assertExplain(t, err == nil, "illegal seek mode err")
 	HelpClose(t, fs, fd)
-	//HelpDelete(t, fs, filename)
+	HelpDelete(t, fs, filename)
 }
 
 func TestSeekErrorBadOffset1(t *testing.T, fs FileSystem) {
