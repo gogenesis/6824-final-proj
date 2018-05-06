@@ -52,7 +52,8 @@ func (file *File) Close() (success bool, err error) {
 
 // See FileSystem::Seek.
 func (file *File) Seek(offset int, base fsraft.SeekMode) (newPosition int, err error) {
-	panic("TODO")
+   file.offset = offset
+   return file.offset, nil
 }
 
 // See FileSystem::Read.

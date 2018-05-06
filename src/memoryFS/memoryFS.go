@@ -19,7 +19,7 @@ type MemoryFS struct {
 // Create an empty in-memory FileSystem rooted at "/".
 func CreateEmptyMemoryFS() MemoryFS {
 	mfs := MemoryFS{
-		activeFDs:           make(map[int]*File),
+		activeFDs:           make(map[int]*File), //opened FDs ...
 		smallestAvailableFD: 3,
 		rootDir:             Directory{},
 	}
@@ -122,7 +122,13 @@ func (mfs *MemoryFS) Close(fileDescriptor int) (success bool, err error) {
 
 // See the spec for FileSystem::Seek.
 func (mfs *MemoryFS) Seek(fileDescriptor int, offset int, base fsraft.SeekMode) (newPosition int, err error) {
-	panic("TODO")
+   _, fdIsActive := mfs.activeFDs[fileDescriptor]
+   if !fdIsActive {
+      return -1, fsraft.InactiveFD
+   }
+   // ...
+   ad.Debug(ad.TRACE, "Done seeking FD %d", fileDescriptor)
+   return 0, nil
 }
 
 // See the spec for FileSystem::Read.
