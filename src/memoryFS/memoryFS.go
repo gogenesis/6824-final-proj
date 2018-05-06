@@ -126,6 +126,9 @@ func (mfs *MemoryFS) Seek(fileDescriptor int, offset int, base fsraft.SeekMode) 
    if !fdIsActive {
       return -1, fsraft.InactiveFD
    }
+   if base < 0 || base > 2 { // man lseek - EINVAL
+      return -1, fsraft.IllegalArgument
+   }
    // ...
    ad.Debug(ad.TRACE, "Done seeking FD %d", fileDescriptor)
    return 0, nil

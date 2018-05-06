@@ -378,19 +378,21 @@ func TestSeekErrorBadFD(t *testing.T, fs FileSystem) {
 }
 
 func TestSeekErrorBadOffsetOperation(t *testing.T, fs FileSystem) {
-	fd := HelpOpen(t, fs, "/bad-offset-operation.txt", ReadWrite, Create)
+	filename := "/bad-offset-operation.txt"
+	fd := HelpOpen(t, fs, filename, ReadWrite, Create)
 	// Enforce only one option
-	_, err := fs.Seek(fd, 0, FromBeginning|FromCurrent|FromEnd)
-	assertEquals(t, err, InactiveFD)
-	_, err = fs.Seek(fd, 0, FromBeginning|FromCurrent)
-	assertEquals(t, err, InactiveFD)
-	_, err = fs.Seek(fd, 0, FromEnd|FromCurrent)
-	assertEquals(t, err, InactiveFD)
-
+	_, err := fs.Seek(fd, 0, -1)
+	assertExplain(t, err == IllegalArgument, "illegal seek mode wrong err")
+	_, err = fs.Seek(fd, 0, 3)
+	assertExplain(t, err == IllegalArgument, "illegal seek mode wrong err")
+	_, err = fs.Seek(fd, 0, 0)
+	assertExplain(t, err == nil, "illegal seek mode err")
+	_, err = fs.Seek(fd, 0, 1)
+	assertExplain(t, err == nil, "illegal seek mode err")
+	_, err = fs.Seek(fd, 0, 2)
+	assertExplain(t, err == nil, "illegal seek mode err")
 	HelpClose(t, fs, fd)
-
-	// TODO check size
-	HelpDelete(t, fs, "/bad-offset-operation-1byte.txt")
+	//HelpDelete(t, fs, filename)
 }
 
 func TestSeekErrorBadOffset1(t *testing.T, fs FileSystem) {

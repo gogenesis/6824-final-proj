@@ -31,6 +31,7 @@ main () {
 	run_test "MemoryFS_TestOpenRWClose64"
 	run_test "MemoryFS_TestOpenCloseLeastFD"
    run_test "TestMemoryFS_TestSeekErrorBadFD"
+   run_test "TestMemoryFS_TestSeekErrorBadOffsetOperation"
    #run_test "MemoryFS_TestOpenCloseDeleteRoot"
    echo ""
    echo ""
