@@ -2,6 +2,7 @@ package fsraft
 
 import "testing"
 import "fmt"
+import "math/rand"
 
 // Functionality tests for a FileSystem go here.
 // Functions in this file are NOT "unit tests" because they ill not be run by "go test" because
@@ -90,6 +91,14 @@ func HelpMkdir(t *testing.T, fs FileSystem,
 
 // ===== BEGIN READ WRITE SEEK HELPERS =====
 
+func HelpMakeBytes(t *testing.T, n int) []byte {
+   rndBytes := make([]byte, n)
+   num, err := rand.Read(rndBytes)
+   assertExplain(t, num == n, "mkbyte %d instead of %d", num, n)
+   assertExplain(t, err == nil, "mkbyte err %s", err)
+   return rndBytes
+}
+
 // error checked helper
 func HelpSeek(t *testing.T, fs FileSystem,
 	fd int, offset int, mode SeekMode) int {
@@ -138,6 +147,7 @@ func HelpReadWrite(t *testing.T, fs FileSystem,
 	return nBytes
 }
 
+// @tests
 // Whenever you add a new functionality test, be sure to add it to this list.
 // This list is used in test_setup.go to run every functionality test on every difficulty.
 var FunctionalityTests = []func(t *testing.T, fs FileSystem){
@@ -164,6 +174,11 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestSeekErrorBadOffsetOperation,
 	TestSeekOffEOF,
 	TestWrite1Byte,
+   TestWrite8Bytes,
+   TestWrite1KBytes,
+   TestWrite1MBytes,
+   TestWrite10MBytes,
+   TestWrite100MBytes,
 	// ========= the line in the sand =======
 	TestMkdir,
 	TestMkdirTree,
@@ -412,17 +427,58 @@ func TestSeekOffEOF(t *testing.T, fs FileSystem) {
 	HelpDelete(t, fs, "/seek-eof.txt")
 }
 
-func TestWrite1Byte(t *testing.T, fs FileSystem) {
-	fileName := "/wr-1-byte.txt"
+func TestWriteNBytesIter(t *testing.T, fs FileSystem, fileName string, nBytes int, iters int) {
 	fd := HelpOpen(t, fs, fileName, ReadWrite, Create)
-	data := []byte("c")
-	n, err := fs.Write(fd, 1, data)
-	assertExplain(t, err == nil, "err %s", err)
-	assertExplain(t, n == 1, "the wr didn't wr 1 byte")
+   data := make([]byte, 0)
+   for i := 0; i < iters; i++ {
+      data = HelpMakeBytes(t, nBytes)
+      assertExplain(t, len(data) == nBytes, "made %d len array", len(data))
+      n, err := fs.Write(fd, nBytes, data)
+      assertExplain(t, err == nil, "err %s", err)
+      assertExplain(t, n == nBytes, "wr %d", n)
+   }
+   HelpClose(t, fs, fd)
+   HelpDelete(t, fs, fileName)
 }
 
-// Coming soon...
-//TODO variants for other byte sweeps {8, 16, 64, 4096, ... GB? } godspeed to us
+/*
+func TestWriteReadNBytesIter(t *testing.T, fs FileSystem, fileName string, nBytes int, iters int) {
+	fd := HelpOpen(t, fs, fileName, ReadWrite, Create)
+   data := make([]byte, 0)
+   for i := 0; i < iters; i++ {
+      data = HelpMakeBytes(t, nBytes)
+      assertExplain(t, len(data) == nBytes, "made %d len array", len(data))
+      n, err := fs.Write(fd, nBytes, data)
+      assertExplain(t, err == nil, "err %s", err)
+      assertExplain(t, n == nBytes, "wr %d", n)
+   }
+   HelpClose(t, fs, fd)
+   HelpDelete(t, fs, fileName)
+}*/
+
+func TestWrite1Byte(t *testing.T, fs FileSystem) {
+   TestWriteNBytesIter(t, fs, "/wr-1.txt", 1, 5)
+}
+
+func TestWrite8Bytes(t *testing.T, fs FileSystem) {
+   TestWriteNBytesIter(t, fs, "/wr-8.txt", 8, 5)
+}
+
+func TestWrite1KBytes(t *testing.T, fs FileSystem) {
+   TestWriteNBytesIter(t, fs, "/wr-1k.txt", 1000, 5)
+}
+
+func TestWrite1MBytes(t *testing.T, fs FileSystem) {
+   TestWriteNBytesIter(t, fs, "/wr-1m.txt", 1000000, 5)
+}
+
+func TestWrite10MBytes(t *testing.T, fs FileSystem) {
+   TestWriteNBytesIter(t, fs, "/wr-10m.txt", 10000000, 5)
+}
+
+func TestWrite100MBytes(t *testing.T, fs FileSystem) {
+   TestWriteNBytesIter(t, fs, "/wr-100m.txt", 100000000, 3)
+}
 
 // ===== BEGIN SWEEP AND WRITE TESTS =====
 

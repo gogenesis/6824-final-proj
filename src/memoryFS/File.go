@@ -63,13 +63,12 @@ func (file *File) Read(numBytes int) (bytesRead int, data []byte, err error) {
 
 // See FileSystem::Write.
 func (file *File) Write(numBytes int, data []byte) (bytesWritten int, err error) {
-   // assert numBytes == len(data) to catch tester bugs
-
+   // when we have assert, assert numBytes == len(data) to catch tester bugs
    // grow file as needed, leaving holes >EOF is written
    if file.offset + numBytes >= len(file.contents) {
       realloc := make([]byte, file.offset + numBytes)
       copy(realloc, file.contents)
-      file.contents = realloc //should garbage collect old file but need to confirm
+      file.contents = realloc //garbage collect old contents but need to confirm
    }
    copy(file.contents[file.offset:numBytes], data)
    return numBytes, nil

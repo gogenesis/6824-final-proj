@@ -37,6 +37,10 @@ main () {
    run_test "MemoryFS_TestSeekErrorBadFD"
    run_test "MemoryFS_TestSeekErrorBadOffsetOperation"
    run_test "MemoryFS_TestWrite1Byte"
+   run_test "MemoryFS_TestWrite1KByte"
+   run_test "MemoryFS_TestWrite1MByte"
+   run_test "MemoryFS_TestWrite10MByte"
+   run_test "MemoryFS_TestWrite100MByte"
    echo ""
    popd > /dev/null
 }

@@ -145,11 +145,11 @@ func (mfs *MemoryFS) Read(fileDescriptor int, numBytes int) (bytesRead int, data
 
 // See the spec for FileSystem::Write.
 func (mfs *MemoryFS) Write(fileDescriptor int, numBytes int, data []byte) (bytesWritten int, err error) {
-	//file, _ := mfs.activeFDs[fileDescriptor]
+	file, _ := mfs.activeFDs[fileDescriptor]
    //if !fdIsActive {
    //   return -1, fsraft.InactiveFD
    //}
-   return numBytes, nil //file.Write(numBytes, data)
+   return file.Write(numBytes, data)
 }
 
 // See the spec for FileSystem::Delete.
