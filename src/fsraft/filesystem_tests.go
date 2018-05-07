@@ -173,6 +173,7 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestSeekErrorBadFD,
 	TestSeekErrorBadOffsetOperation,
 	TestSeekOffEOF,
+	TestWriteClosedFile,
 	TestWrite1Byte,
 	TestWrite8Bytes,
 	TestWrite1KBytes,
@@ -441,20 +442,11 @@ func TestWriteNBytesIter(t *testing.T, fs FileSystem, fileName string, nBytes in
 	HelpDelete(t, fs, fileName)
 }
 
-/*
-func TestWriteReadNBytesIter(t *testing.T, fs FileSystem, fileName string, nBytes int, iters int) {
-	fd := HelpOpen(t, fs, fileName, ReadWrite, Create)
-   data := make([]byte, 0)
-   for i := 0; i < iters; i++ {
-      data = HelpMakeBytes(t, nBytes)
-      assertExplain(t, len(data) == nBytes, "made %d len array", len(data))
-      n, err := fs.Write(fd, nBytes, data)
-      assertExplain(t, err == nil, "err %s", err)
-      assertExplain(t, n == nBytes, "wr %d", n)
-   }
-   HelpClose(t, fs, fd)
-   HelpDelete(t, fs, fileName)
-}*/
+func TestWriteClosedFile(t *testing.T, fs FileSystem) {
+	n, err := fs.Write(555, 5, HelpMakeBytes(t, 5)) //must be uninit
+	assertExplain(t, err == InactiveFD, "err %s", err)
+	assertExplain(t, n == -1, "wr %d", n)
+}
 
 func TestWrite1Byte(t *testing.T, fs FileSystem) {
 	TestWriteNBytesIter(t, fs, "/wr-1.txt", 1, 5)
@@ -478,6 +470,21 @@ func TestWrite10MBytes(t *testing.T, fs FileSystem) {
 
 func TestWrite100MBytes(t *testing.T, fs FileSystem) {
 	TestWriteNBytesIter(t, fs, "/wr-100m.txt", 100000000, 3)
+}
+
+func TestWriteReadNBytesIter(t *testing.T, fs FileSystem, fileName string, nBytes int, iters int) {
+	fd := HelpOpen(t, fs, fileName, ReadWrite, Create)
+	data := make([]byte, 0)
+	for i := 0; i < iters; i++ {
+		data = HelpMakeBytes(t, nBytes)
+		assertExplain(t, len(data) == nBytes, "made %d len array", len(data))
+		n, err := fs.Write(fd, nBytes, data)
+		assertExplain(t, err == nil, "err %s", err)
+		assertExplain(t, n == nBytes, "wr %d", n)
+
+	}
+	HelpClose(t, fs, fd)
+	HelpDelete(t, fs, fileName)
 }
 
 // ===== BEGIN SWEEP AND WRITE TESTS =====
