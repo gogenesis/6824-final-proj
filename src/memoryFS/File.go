@@ -52,8 +52,8 @@ func (file *File) Close() (success bool, err error) {
 
 // See FileSystem::Seek.
 func (file *File) Seek(offset int, base fsraft.SeekMode) (newPosition int, err error) {
-   file.offset = offset
-   return file.offset, nil
+	file.offset = offset
+	return file.offset, nil
 }
 
 // See FileSystem::Read.
@@ -63,15 +63,15 @@ func (file *File) Read(numBytes int) (bytesRead int, data []byte, err error) {
 
 // See FileSystem::Write.
 func (file *File) Write(numBytes int, data []byte) (bytesWritten int, err error) {
-   // when we have assert, assert numBytes == len(data) to catch tester bugs
-   // grow file as needed, leaving holes >EOF is written
-   if file.offset + numBytes >= len(file.contents) {
-      realloc := make([]byte, file.offset + numBytes)
-      copy(realloc, file.contents)
-      file.contents = realloc //garbage collect old contents but need to confirm
-   }
-   copy(file.contents[file.offset:numBytes], data)
-   return numBytes, nil
+	// when we have assert, assert numBytes == len(data) to catch tester bugs
+	// grow file as needed, leaving holes >EOF is written
+	if file.offset+numBytes >= len(file.contents) {
+		realloc := make([]byte, file.offset+numBytes)
+		copy(realloc, file.contents)
+		file.contents = realloc //garbage collect old contents but need to confirm
+	}
+	copy(file.contents[file.offset:numBytes], data)
+	return numBytes, nil
 }
 
 // See FileSystem::Delete.

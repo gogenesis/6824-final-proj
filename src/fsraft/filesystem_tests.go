@@ -92,11 +92,11 @@ func HelpMkdir(t *testing.T, fs FileSystem,
 // ===== BEGIN READ WRITE SEEK HELPERS =====
 
 func HelpMakeBytes(t *testing.T, n int) []byte {
-   rndBytes := make([]byte, n)
-   num, err := rand.Read(rndBytes)
-   assertExplain(t, num == n, "mkbyte %d instead of %d", num, n)
-   assertExplain(t, err == nil, "mkbyte err %s", err)
-   return rndBytes
+	rndBytes := make([]byte, n)
+	num, err := rand.Read(rndBytes)
+	assertExplain(t, num == n, "mkbyte %d instead of %d", num, n)
+	assertExplain(t, err == nil, "mkbyte err %s", err)
+	return rndBytes
 }
 
 // error checked helper
@@ -174,11 +174,11 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestSeekErrorBadOffsetOperation,
 	TestSeekOffEOF,
 	TestWrite1Byte,
-   TestWrite8Bytes,
-   TestWrite1KBytes,
-   TestWrite1MBytes,
-   TestWrite10MBytes,
-   TestWrite100MBytes,
+	TestWrite8Bytes,
+	TestWrite1KBytes,
+	TestWrite1MBytes,
+	TestWrite10MBytes,
+	TestWrite100MBytes,
 	// ========= the line in the sand =======
 	TestMkdir,
 	TestMkdirTree,
@@ -429,16 +429,16 @@ func TestSeekOffEOF(t *testing.T, fs FileSystem) {
 
 func TestWriteNBytesIter(t *testing.T, fs FileSystem, fileName string, nBytes int, iters int) {
 	fd := HelpOpen(t, fs, fileName, ReadWrite, Create)
-   data := make([]byte, 0)
-   for i := 0; i < iters; i++ {
-      data = HelpMakeBytes(t, nBytes)
-      assertExplain(t, len(data) == nBytes, "made %d len array", len(data))
-      n, err := fs.Write(fd, nBytes, data)
-      assertExplain(t, err == nil, "err %s", err)
-      assertExplain(t, n == nBytes, "wr %d", n)
-   }
-   HelpClose(t, fs, fd)
-   HelpDelete(t, fs, fileName)
+	data := make([]byte, 0)
+	for i := 0; i < iters; i++ {
+		data = HelpMakeBytes(t, nBytes)
+		assertExplain(t, len(data) == nBytes, "made %d len array", len(data))
+		n, err := fs.Write(fd, nBytes, data)
+		assertExplain(t, err == nil, "err %s", err)
+		assertExplain(t, n == nBytes, "wr %d", n)
+	}
+	HelpClose(t, fs, fd)
+	HelpDelete(t, fs, fileName)
 }
 
 /*
@@ -457,27 +457,27 @@ func TestWriteReadNBytesIter(t *testing.T, fs FileSystem, fileName string, nByte
 }*/
 
 func TestWrite1Byte(t *testing.T, fs FileSystem) {
-   TestWriteNBytesIter(t, fs, "/wr-1.txt", 1, 5)
+	TestWriteNBytesIter(t, fs, "/wr-1.txt", 1, 5)
 }
 
 func TestWrite8Bytes(t *testing.T, fs FileSystem) {
-   TestWriteNBytesIter(t, fs, "/wr-8.txt", 8, 5)
+	TestWriteNBytesIter(t, fs, "/wr-8.txt", 8, 5)
 }
 
 func TestWrite1KBytes(t *testing.T, fs FileSystem) {
-   TestWriteNBytesIter(t, fs, "/wr-1k.txt", 1000, 5)
+	TestWriteNBytesIter(t, fs, "/wr-1k.txt", 1000, 5)
 }
 
 func TestWrite1MBytes(t *testing.T, fs FileSystem) {
-   TestWriteNBytesIter(t, fs, "/wr-1m.txt", 1000000, 5)
+	TestWriteNBytesIter(t, fs, "/wr-1m.txt", 1000000, 5)
 }
 
 func TestWrite10MBytes(t *testing.T, fs FileSystem) {
-   TestWriteNBytesIter(t, fs, "/wr-10m.txt", 10000000, 5)
+	TestWriteNBytesIter(t, fs, "/wr-10m.txt", 10000000, 5)
 }
 
 func TestWrite100MBytes(t *testing.T, fs FileSystem) {
-   TestWriteNBytesIter(t, fs, "/wr-100m.txt", 100000000, 3)
+	TestWriteNBytesIter(t, fs, "/wr-100m.txt", 100000000, 3)
 }
 
 // ===== BEGIN SWEEP AND WRITE TESTS =====

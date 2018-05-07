@@ -123,19 +123,19 @@ func (mfs *MemoryFS) Close(fileDescriptor int) (success bool, err error) {
 // See the spec for FileSystem::Seek.
 func (mfs *MemoryFS) Seek(fileDescriptor int, offset int, base fsraft.SeekMode) (newPosition int, err error) {
 	file, fdIsActive := mfs.activeFDs[fileDescriptor]
-   if !fdIsActive {
-      return -1, fsraft.InactiveFD
-   }
-   if base < 0 || base > 2 { // man lseek - EINVAL
-      return -1, fsraft.IllegalArgument
-   }
-   if offset < 0 { // man lseek - EINVAL
-      return -1, fsraft.IllegalArgument
-   }
-   curOffset, err := file.Seek(offset, base)
-   // ...
-   ad.Debug(ad.TRACE, "Done seeking FD %d", fileDescriptor)
-   return curOffset, nil
+	if !fdIsActive {
+		return -1, fsraft.InactiveFD
+	}
+	if base < 0 || base > 2 { // man lseek - EINVAL
+		return -1, fsraft.IllegalArgument
+	}
+	if offset < 0 { // man lseek - EINVAL
+		return -1, fsraft.IllegalArgument
+	}
+	curOffset, err := file.Seek(offset, base)
+	// ...
+	ad.Debug(ad.TRACE, "Done seeking FD %d", fileDescriptor)
+	return curOffset, nil
 }
 
 // See the spec for FileSystem::Read.
@@ -146,10 +146,10 @@ func (mfs *MemoryFS) Read(fileDescriptor int, numBytes int) (bytesRead int, data
 // See the spec for FileSystem::Write.
 func (mfs *MemoryFS) Write(fileDescriptor int, numBytes int, data []byte) (bytesWritten int, err error) {
 	file, _ := mfs.activeFDs[fileDescriptor]
-   //if !fdIsActive {
-   //   return -1, fsraft.InactiveFD
-   //}
-   return file.Write(numBytes, data)
+	//if !fdIsActive {
+	//   return -1, fsraft.InactiveFD
+	//}
+	return file.Write(numBytes, data)
 }
 
 // See the spec for FileSystem::Delete.
