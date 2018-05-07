@@ -34,8 +34,9 @@ main () {
    run_test "MemoryFS_TestOpenCloseDeleteRoot"
    run_test "MemoryFS_TestOpenCloseDeleteMaxFD"
    run_test "MemoryFS_TestOpenCloseDeleteRootMax"
-   run_test "TestMemoryFS_TestSeekErrorBadFD"
-   run_test "TestMemoryFS_TestSeekErrorBadOffsetOperation"
+   run_test "MemoryFS_TestSeekErrorBadFD"
+   run_test "MemoryFS_TestSeekErrorBadOffsetOperation"
+   run_test "MemoryFS_TestWrite1Byte"
    echo ""
    popd > /dev/null
 }

@@ -158,15 +158,16 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestOpenCloseDeleteMaxFD,
 	TestOpenCloseDeleteRoot,
 	TestOpenCloseDeleteRootMax,
-	// ========= the line in the sand =======
-	TestOpenCloseDeleteAcrossDirectories,
 	TestReadWriteBasic,
 	TestReadWriteBasic4,
 	TestSeekErrorBadFD,
 	TestSeekErrorBadOffsetOperation,
-	TestSeekErrorBadOffset1,
+	TestSeekOffEOF,
+	TestWrite1Byte,
+	// ========= the line in the sand =======
 	TestMkdir,
 	TestMkdirTree,
+	TestOpenCloseDeleteAcrossDirectories,
 }
 
 // ===== BEGIN OPEN CLOSE TESTS ======
@@ -362,10 +363,8 @@ func TestReadWriteBasic4(t *testing.T, fs FileSystem) {
 }
 
 // TODO longer file paths and contents coming soon...
-
-// TODO need a debug interface to simulate the test datastore runs out of space
-
-// TODO need a debug interface to simulate the test datastore has an IO error
+// TODO need a debug interface to simulate the test datastore runs out of space...
+// TODO need a debug interface to simulate the test datastore has an IO error...
 
 // ===== BEGIN SEEK DELETE TESTS =====
 
@@ -393,10 +392,10 @@ func TestSeekErrorBadOffsetOperation(t *testing.T, fs FileSystem) {
 	HelpDelete(t, fs, filename)
 }
 
-func TestSeekErrorBadOffset1(t *testing.T, fs FileSystem) {
-	fd := HelpOpen(t, fs, "/bad-offset-1byte.txt", ReadWrite, Create)
+func TestSeekOffEOF(t *testing.T, fs FileSystem) {
+	fd := HelpOpen(t, fs, "/seek-eof.txt", ReadWrite, Create)
 	_, err := fs.Seek(fd, -1, FromBeginning) // can't be negative
-	assertEquals(t, err, InactiveFD)
+	assertExplain(t, err == IllegalArgument, "illegal offset err %s", err)
 
 	HelpSeek(t, fs, fd, 0, FromEnd)     // valid - at byte 0
 	HelpSeek(t, fs, fd, 0, FromCurrent) // valid - at byte 0
@@ -410,12 +409,16 @@ func TestSeekErrorBadOffset1(t *testing.T, fs FileSystem) {
 	HelpSeek(t, fs, fd, 1, FromBeginning) // valid - off end of file at byte 1
 	HelpSeek(t, fs, fd, 0, FromBeginning) // valid - at byte 0
 
-	n := HelpWrite(t, fs, fd, "c")
+	HelpDelete(t, fs, "/seek-eof.txt")
+}
+
+func TestWrite1Byte(t *testing.T, fs FileSystem) {
+	fileName := "/wr-1-byte.txt"
+	fd := HelpOpen(t, fs, fileName, ReadWrite, Create)
+	data := []byte("c")
+	n, err := fs.Write(fd, 1, data)
+	assertExplain(t, err == nil, "err %s", err)
 	assertExplain(t, n == 1, "the wr didn't wr 1 byte")
-
-	// TODO check size of the file
-
-	HelpDelete(t, fs, "/bad-offset-1byte.txt")
 }
 
 // Coming soon...
