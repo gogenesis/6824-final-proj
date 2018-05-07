@@ -180,6 +180,9 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestWrite1MBytes,
 	TestWrite10MBytes,
 	TestWrite100MBytes,
+	TestReadClosedFile,
+	TestWriteRead1Byte,
+	TestWriteRead8Bytes,
 	// ========= the line in the sand =======
 	TestMkdir,
 	TestMkdirTree,
@@ -474,17 +477,40 @@ func TestWrite100MBytes(t *testing.T, fs FileSystem) {
 
 func TestWriteReadNBytesIter(t *testing.T, fs FileSystem, fileName string, nBytes int, iters int) {
 	fd := HelpOpen(t, fs, fileName, ReadWrite, Create)
-	data := make([]byte, 0)
+	dataIn := make([]byte, 0)
 	for i := 0; i < iters; i++ {
-		data = HelpMakeBytes(t, nBytes)
-		assertExplain(t, len(data) == nBytes, "made %d len array", len(data))
-		n, err := fs.Write(fd, nBytes, data)
+		dataIn = HelpMakeBytes(t, nBytes)
+		assertExplain(t, len(dataIn) == nBytes, "made %d len array", len(dataIn))
+		nWr, err := fs.Write(fd, nBytes, dataIn)
 		assertExplain(t, err == nil, "err %s", err)
-		assertExplain(t, n == nBytes, "wr %d", n)
-
+		assertExplain(t, nWr == nBytes, "wr %d", nWr)
+		HelpSeek(t, fs, fd, 0+(nBytes*iters)-1, FromBeginning)
+		_, _, err = fs.Read(fd, nBytes)
+		assertExplain(t, err == nil, "err %s", err)
+		//assertExplain(t, nRd == nBytes, "rd %d", nRd)
+		//for i := 0; i < len(dataIn); i++ {
+		//   assertExplain(t, dataIn[i] == dataOut[i],
+		//      "data was corrupted at i=%d (%d vs %d)", i, dataIn[i], dataOut[i])
+		//}
+		HelpSeek(t, fs, fd, 0+(nBytes*iters)-1, FromBeginning)
 	}
 	HelpClose(t, fs, fd)
 	HelpDelete(t, fs, fileName)
+}
+
+func TestReadClosedFile(t *testing.T, fs FileSystem) {
+	n, data, err := fs.Read(555, 5) //must be uninit
+	assertExplain(t, err == InactiveFD, "err %s", err)
+	assertExplain(t, n == -1, "wr %d", n)
+	assertExplain(t, len(data) == 0, "no data should have been read")
+}
+
+func TestWriteRead1Byte(t *testing.T, fs FileSystem) {
+	TestWriteReadNBytesIter(t, fs, "/r-1.txt", 1, 5)
+}
+
+func TestWriteRead8Bytes(t *testing.T, fs FileSystem) {
+	TestWriteReadNBytesIter(t, fs, "/r-8.txt", 8, 5)
 }
 
 // ===== BEGIN SWEEP AND WRITE TESTS =====

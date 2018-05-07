@@ -52,25 +52,69 @@ func (file *File) Close() (success bool, err error) {
 
 // See FileSystem::Seek.
 func (file *File) Seek(offset int, base fsraft.SeekMode) (newPosition int, err error) {
+	// currently supporting FromBeginning
 	file.offset = offset
 	return file.offset, nil
 }
 
 // See FileSystem::Read.
 func (file *File) Read(numBytes int) (bytesRead int, data []byte, err error) {
-	panic("TODO")
+	readBytes := make([]byte, numBytes)
+	if numBytes < 0 {
+		return -1, make([]byte, 0), fsraft.IllegalArgument
+	}
+	//  DEBUG CODE stashed ... please remind me how we do leveled logs
+	print("offset")
+	print(file.offset)
+	print("\n")
+	print("numBytes")
+	print(numBytes)
+	print("\n")
+	print("lenfile")
+	print(len(file.contents))
+	print("\n")
+	//TODO if directory, return IsDirectory
+	if file.offset+bytesRead > len(file.contents) { //if offset goes past end of file
+		return 0, make([]byte, 0), nil //no bytes are read
+	}
+	copy(readBytes, file.contents[file.offset:file.offset+numBytes])
+	file.offset += numBytes
+	print("offset now")
+	print(file.offset)
+	print("\n")
+	return numBytes, readBytes, nil
 }
 
 // See FileSystem::Write.
 func (file *File) Write(numBytes int, data []byte) (bytesWritten int, err error) {
 	// when we have assert, assert numBytes == len(data) to catch tester bugs
-	// grow file as needed, leaving holes >EOF is written
-	if file.offset+numBytes >= len(file.contents) {
+	// grow file as needed, leaving holes >EOF written
+	if file.offset+numBytes > len(file.contents) {
+		// DEBUG CODE stashed ... please remind me how we do leveled logs
+		print("offset")
+		print(file.offset)
+		print("\n")
+		print("numBytes")
+		print(numBytes)
+		print("\n")
+		print("lenfile")
+		print(len(file.contents))
+		print("\nGROWING\n")
 		realloc := make([]byte, file.offset+numBytes)
-		copy(realloc, file.contents)
+		copy(realloc[0:len(file.contents)], file.contents)
 		file.contents = realloc //garbage collect old contents but need to confirm
+		// DEBUG CODE
+		print("lenfile now")
+		print(len(file.contents))
+		print("\n")
 	}
-	copy(file.contents[file.offset:numBytes], data)
+	copy(file.contents[file.offset:file.offset+numBytes], data)
+	// we currently assume all bytes are written correctly
+	// more strict checks would check datastore space first and write up to limit
+	file.offset += numBytes
+	print("offset now")
+	print(file.offset)
+	print("\n")
 	return numBytes, nil
 }
 

@@ -42,6 +42,7 @@ main () {
    run_test "MemoryFS_TestWrite1MByte"
    run_test "MemoryFS_TestWrite10MByte"
    run_test "MemoryFS_TestWrite100MByte"
+   run_test "MemoryFS_TestReadClosedFile"
    echo ""
    popd > /dev/null
 }

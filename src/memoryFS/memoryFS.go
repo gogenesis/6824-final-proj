@@ -140,7 +140,11 @@ func (mfs *MemoryFS) Seek(fileDescriptor int, offset int, base fsraft.SeekMode) 
 
 // See the spec for FileSystem::Read.
 func (mfs *MemoryFS) Read(fileDescriptor int, numBytes int) (bytesRead int, data []byte, err error) {
-	panic("TODO")
+	file, fdIsActive := mfs.activeFDs[fileDescriptor]
+	if !fdIsActive {
+		return -1, make([]byte, 0), fsraft.InactiveFD
+	}
+	return file.Read(numBytes)
 }
 
 // See the spec for FileSystem::Write.
