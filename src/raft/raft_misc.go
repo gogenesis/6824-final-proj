@@ -81,7 +81,7 @@ func (rf *Raft) updateTermIfNecessary(otherTerm int) {
 			go func() { rf.becomeFollower <- true }()
 		}
 		rf.CurrentElectionState = Follower
-		debug(rf, RPC, "Updating term to %d and becoming follower", rf.CurrentTerm)
+		ad.DebugObj(rf, ad.RPC, "Updating term to %d and becoming follower", rf.CurrentTerm)
 		rf.writePersist()
 	}
 }

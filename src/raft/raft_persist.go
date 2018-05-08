@@ -71,7 +71,7 @@ func (rf *Raft) readPersist(data []byte) {
 	rf.lastApplied = rf.lastIndexInSnapshot()
 	rf.commitIndex = rf.lastApplied
 
-	debug(rf, RPC, "State read from stable storage. CurrentTerm=%d, VotedFor=%d, len(log)=%d",
+	ad.DebugObj(rf, ad.RPC, "State read from stable storage. CurrentTerm=%d, VotedFor=%d, len(log)=%d",
 		rf.CurrentTerm, rf.VotedFor, rf.Log.length())
 	rf.assertInvariants()
 }
