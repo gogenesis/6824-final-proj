@@ -31,7 +31,7 @@ var packageNamesToDebugLevels = map[string]int{
 var AssertionsEnabled bool
 
 // if no environment variables are set
-var defaultDebugLevel = NONE
+var defaultDebugLevel = RPC
 
 // The actual setup function ===================================================
 
