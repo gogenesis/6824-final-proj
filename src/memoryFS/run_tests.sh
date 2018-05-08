@@ -5,7 +5,11 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 run_test () {
    local name="$1"
    echo "Start $name" 
-   go test -run $name
+   if [ ! -z $JENKINS ]; then
+      /usr/local/go/bin/go test -run $name
+   else
+      go test -run $name
+   fi
    exit_code=$?
    if [ $exit_code != 0 ]; then
       exit $exit_code 
