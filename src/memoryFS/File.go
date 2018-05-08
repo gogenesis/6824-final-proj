@@ -1,7 +1,6 @@
 package memoryFS
 
 import (
-	"ad"
 	"filesystem"
 )
 
