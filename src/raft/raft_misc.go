@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	// first things first
+	// first things first. This is in case you want the same seed for a later test.
 	seed := time.Now().UTC().UnixNano()
 	rand.Seed(seed)
 	fmt.Printf("seed=%v\n", seed)

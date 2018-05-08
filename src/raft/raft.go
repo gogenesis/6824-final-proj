@@ -1,7 +1,6 @@
 package raft
 
 import (
-	"fmt"
 	"labrpc"
 	_ "net/http/pprof"
 	"time"

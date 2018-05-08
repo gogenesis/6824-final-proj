@@ -9,14 +9,14 @@ import (
 
 func Assert(cond bool) {
 	// Skip assertions when debugging is turned off for performance
-	if (CURRENT_DEBUG_LEVEL != NONE) && (!cond) {
+	if assertionsEnabled && (!cond) {
 		panic("Assertion error!")
 	}
 }
 
 func AssertEquals(expected, actual interface{}) {
 	// Skip assertions when debugging is turned off for performance
-	if (CURRENT_DEBUG_LEVEL != NONE) && (expected != actual) {
+	if assertionsEnabled && (expected != actual) {
 		panic(fmt.Sprintf("AssertionError: expected %v, got %v\n", expected, actual))
 	}
 }

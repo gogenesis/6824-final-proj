@@ -4,18 +4,29 @@ import (
 	"fmt"
 	"path"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
 
 // logging levels
 const (
-	TRACE               = iota // everything!
-	RPC                        // no more than one per RPC or state change
-	WARN                       // big warnings
-	NONE                       // for submission.
-	CURRENT_DEBUG_LEVEL = RPC
+	NONE  = iota // for submission.
+	WARN         // only for warnings or things that go wrong
+	RPC          // no more than two per RPC or state change
+	TRACE        // everything!
 )
+
+var loggingLevelNames = [...]string{
+	"NONE",
+	"WARN",
+	"RPC",
+	"TRACE",
+}
+
+func debugLevelName(level int) string {
+	return loggingLevelNames[level]
+}
 
 // Make sure that logging a debug message is atomic
 var debugMutex sync.Mutex
@@ -40,16 +51,23 @@ func debugPrivate(level int, stateStr string, formatStr string, a ...interface{}
 	defer debugMutex.Unlock()
 	t := time.Now().Format("3:04:05.000")
 
-	if CURRENT_DEBUG_LEVEL <= level {
-		loggingLevelNames := [...]string{"TRACE", " RPC ", "WARN "}
-		levelName := loggingLevelNames[level]
-		// 2 to use the function 2 above this in the stack trace
-		_, fileWithPath, lineNum, _ := runtime.Caller(2)
-		_, file := path.Split(fileWithPath)
-		// 12 because most file names are 12 lines or fewer
+	// 2 to use the function 2 above this in the stack trace
+	_, fileWithPath, lineNum, _ := runtime.Caller(2)
+	dir, file := path.Split(fileWithPath)
+	packageName := strings.ToLower(path.Base(dir))
+	levelName := debugLevelName(level)
+	//fmt.Printf("%v %v ", packageName, levelName)
+	if level <= packageNamesToDebugLevels[packageName] {
+		//fmt.Printf("<= %v, printing\n", debugLevelName(packageNamesToDebugLevels[packageName]))
+		// these are tbh pretty arbitrary amounts of padding
+		// - for left-align
+		packageWithPadding := fmt.Sprintf("%-8v", packageName)
 		fileWithPadding := fmt.Sprintf("%12v", file)
+		levelNameWithPadding := fmt.Sprintf("%-5v", levelName)
 
-		fmt.Printf("[%v] %v %v:%03d %v %v\n", levelName, t, fileWithPadding, lineNum, stateStr,
+		fmt.Printf("[%v %v] %v %v:%03d [%v] %v\n", packageWithPadding, levelNameWithPadding, t, fileWithPadding, lineNum, stateStr,
 			fmt.Sprintf(formatStr, a...))
+	} else {
+		//fmt.Printf("> %v, not printing\n", debugLevelName(packageNamesToDebugLevels[packageName]))
 	}
 }
