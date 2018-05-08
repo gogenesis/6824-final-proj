@@ -1,5 +1,7 @@
 package raft
 
+import "ad"
+
 // Return the size of this Raft's persisted state in bytes.
 func (rf *Raft) StateSizeBytes() int {
 	rf.lock()

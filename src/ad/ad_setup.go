@@ -27,7 +27,8 @@ var packageNamesToDebugLevels = map[string]int{
 	"memoryfs": -1,
 }
 
-var assertionsEnabled bool
+// exported so Raft can use it to skip assertions
+var AssertionsEnabled bool
 
 // if no environment variables are set
 var defaultDebugLevel = NONE
@@ -37,11 +38,11 @@ var defaultDebugLevel = NONE
 func init() {
 	// Will be automatically run at the beginning of every run.
 
-	assertionsEnabled = true
+	AssertionsEnabled = true
 	disableAssertionsVar := os.Getenv(disableAssertionsEnvVarName)
 	if strings.ToLower(disableAssertionsVar) == "true" {
 		fmt.Printf("Disabling assertions because $%v==true\n", disableAssertionsEnvVarName)
-		assertionsEnabled = false
+		AssertionsEnabled = false
 	}
 
 	for packageName := range packageNamesToDebugLevels {
@@ -61,16 +62,24 @@ func init() {
 			packageName, debugLevelName(packageNamesToDebugLevels[packageName]), envVarName)
 	}
 
-	debugLevelForOtherPackages, setWithEnvVar := envVarIntValueAndIsInt(defaultDebugLevelEnvVarName)
-	var explanation = " through default environment variable " + defaultDebugLevelEnvVarName
-	if !setWithEnvVar {
-		debugLevelForOtherPackages = defaultDebugLevel
-		explanation = " because it was not set through any environment variable" //
+	levelFromDefaultEnvVar, defaultEnvVarSet := envVarIntValueAndIsInt(defaultDebugLevelEnvVarName)
+	var levelForOtherPackages int
+	var explanation string
+	if defaultEnvVarSet {
+		levelForOtherPackages = levelFromDefaultEnvVar
+		explanation = " through default environment variable " + defaultDebugLevelEnvVarName
+	} else {
+		levelForOtherPackages = defaultDebugLevel
+		// explanation will be set in the for loop because it should be different for each package
 	}
 	for packageName := range packageNamesToDebugLevels {
 		// If it's not set above
 		if packageNamesToDebugLevels[packageName] == -1 {
-			packageNamesToDebugLevels[packageName] = debugLevelForOtherPackages
+			packageNamesToDebugLevels[packageName] = levelForOtherPackages
+			if !defaultEnvVarSet {
+				explanation = fmt.Sprintf(" because neither %v or %v are set", packageDebugLevelEnvVarName(packageName),
+					defaultDebugLevelEnvVarName)
+			}
 			fmt.Printf("Setting debug level for package %-8v to %v%v.\n",
 				packageName, debugLevelName(packageNamesToDebugLevels[packageName]), explanation)
 		}

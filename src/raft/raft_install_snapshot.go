@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"ad"
 	"fmt"
 )
 
@@ -133,14 +134,14 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 	case rf.lastApplied < args.LastIncludedIndex &&
 		args.LastIncludedIndex <= rf.commitIndex:
 		// Update lastApplied so that the next command applied is the one that follows this snapshot.
-		ad.DebugObj(rf, ad.CURRENT, "Snapshot ends with committed but not applied entries, Updating LastApplied to %d", args.LastIncludedIndex)
+		ad.DebugObj(rf, ad.TRACE, "Snapshot ends with committed but not applied entries, Updating LastApplied to %d", args.LastIncludedIndex)
 		rf.lastApplied = args.LastIncludedIndex
 		rf.snapshotWithLock(args.Data, args.LastIncludedIndex)
 
 	case rf.commitIndex < args.LastIncludedIndex &&
 		args.LastIncludedIndex < rf.lastLogIndex():
 		// This snapshot includes noncommitted entries.
-		ad.DebugObj(rf, ad.CURRENT, "Snapshot ends with stored but not committed entries, updating lastApplied=commitIndex=%d",
+		ad.DebugObj(rf, ad.TRACE, "Snapshot ends with stored but not committed entries, updating lastApplied=commitIndex=%d",
 			args.LastIncludedIndex)
 		rf.lastApplied = args.LastIncludedIndex
 		rf.commitIndex = args.LastIncludedIndex
@@ -148,7 +149,7 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 
 	case rf.lastLogIndex() <= args.LastIncludedIndex:
 		// Discard the entire log because it is obselete at this point.
-		ad.DebugObj(rf, ad.CURRENT, "Snapshot ends with entries after the end of my log, replacing entire log.")
+		ad.DebugObj(rf, ad.TRACE, "Snapshot ends with entries after the end of my log, replacing entire log.")
 		rf.lastApplied = args.LastIncludedIndex
 		rf.commitIndex = args.LastIncludedIndex
 		rf.snapshotWithLock(args.Data, args.LastIncludedIndex) // automatically handles compression and log replacement

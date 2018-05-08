@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"ad"
 	"fmt"
 	"math"
 	"math/rand"
@@ -16,7 +17,7 @@ func init() {
 }
 
 // for debugging
-func (rf *Raft) debugPrefix() string {
+func (rf *Raft) DebugPrefix() string {
 	var electionState string
 	switch rf.CurrentElectionState {
 	case Leader:
@@ -33,7 +34,7 @@ func (rf *Raft) debugPrefix() string {
 // check representation invariants.
 // ONLY CALL WITH THE LOCK
 func (rf *Raft) assertInvariants() {
-	if CURRENT_DEBUG_LEVEL == NONE {
+	if !ad.AssertionsEnabled {
 		// for performance, don't check invariants
 		return
 	}

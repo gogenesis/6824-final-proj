@@ -17,6 +17,11 @@ const (
 	TRACE        // everything!
 )
 
+// Indicate that an object should print its state when debugging.
+type Debuggable interface {
+	DebugPrefix() string
+}
+
 var loggingLevelNames = [...]string{
 	"NONE",
 	"WARN",
@@ -34,11 +39,6 @@ var debugMutex sync.Mutex
 // Write some stuff to stdout
 func Debug(level int, formatStr string, a ...interface{}) {
 	debugPrivate(level, "", formatStr, a...)
-}
-
-// Indicate that an object should print its state when debugging.
-type Debuggable interface {
-	DebugPrefix() string
 }
 
 // Debug with some state about an object.
