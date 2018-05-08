@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"fmt"
 	"labrpc"
 	_ "net/http/pprof"
 	"time"
@@ -282,10 +283,11 @@ func Make(peers []*labrpc.ClientEnd, me int, persister *Persister, applyCh chan 
 
 	// store the state in case we crash immediately
 	rf.writePersist()
-	rf.unlock()
 
 	go rf.ElectionThread()
 	go rf.HeartbeatThread()
 	go rf.ApplierThread()
+
+	rf.unlock()
 	return rf
 }

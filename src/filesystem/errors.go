@@ -1,4 +1,4 @@
-package fsraft
+package filesystem
 
 // This file holds definitions of various file-related errors.
 // These are loosely based off the standard POSIX/C error codes available at
@@ -22,10 +22,11 @@ const (
 	NoMoreSpace                        // There is no remaining space on the file system containing the file (ENOSPC).
 	DirectoryNotEmpty                  // There was an attempt to delete a non-empty directory (ENOTEMPTY).
 	AlreadyExists                      // The specified pathname already exists (EEXIST).
-	AlreadyOpen                        // An attempt was made to open a file that is already open. This is an error that does not exist in POSIX because a file can only be opened once here.
+	AlreadyOpen                        // An attempt was made to open a file that is already open. This error does not exist in POSIX because a file can only be opened once here.
+	WriteTooLarge                      // An attempt was made to write too much data in a single call to Write().
 )
 
-var valuesToStrings = map[ErrorCode]string{
+var errorCodesToNames = map[ErrorCode]string{
 	NotFound:          "NotFound",
 	IsDirectory:       "IsDirectory",
 	TooManyFDsOpen:    "TooManyFDsOpen",
@@ -38,13 +39,14 @@ var valuesToStrings = map[ErrorCode]string{
 	DirectoryNotEmpty: "DirectoryNotEmpty",
 	AlreadyExists:     "AlreadyExists",
 	AlreadyOpen:       "AlreadyOpen",
+	WriteTooLarge:       "WriteTooLarge",
 }
 
 // Needed for ErrorCode to conform to the builtin interface "error",
 // Note that ErrorCode uses value receivers, not pointer receivers.
 // see https://golang.org/ref/spec#Errors
 func (e ErrorCode) Error() string {
-	return valuesToStrings[e]
+	return errorCodesToNames[e]
 }
 
 // Used for traditionally turning an object into a string.

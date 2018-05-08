@@ -1,4 +1,4 @@
-package fsraft
+package filesystem
 
 type FileSystem interface {
 

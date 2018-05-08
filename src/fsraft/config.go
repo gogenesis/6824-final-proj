@@ -1,23 +1,21 @@
 package fsraft
 
 import (
+	crand "crypto/rand"
+	"encoding/base64"
+	"fmt"
 	"labrpc"
 	"log"
+	"math/big"
+	"math/rand"
+	"os"
+	"raft"
+	"runtime"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
 )
-import "testing"
-import "os"
-
-// import "log"
-import crand "crypto/rand"
-import "math/big"
-import "math/rand"
-import "encoding/base64"
-import "sync"
-import "runtime"
-import "raft"
-import "fmt"
-import "time"
-import "sync/atomic"
 
 func randstring(n int) string {
 	b := make([]byte, 2*n)
@@ -52,7 +50,7 @@ type config struct {
 	fileServers  []*FileServer
 	saved        []*raft.Persister
 	endnames     [][]string // names of each server's sending ClientEnds
-	clerks       map[*FSClerk][]string
+	clerks       map[*Clerk][]string
 	nextClientId int
 	maxraftstate int
 	start        time.Time // time at which make_config() was called
@@ -191,7 +189,7 @@ func (cfg *config) partition(p1 []int, p2 []int) {
 // Create a clerk with clerk specific server names.
 // Give it connections to all of the servers, but for
 // now enable only connections to servers in to[].
-func (cfg *config) makeClient(to []int) *FSClerk {
+func (cfg *config) makeClient(to []int) *Clerk {
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
 
@@ -211,7 +209,7 @@ func (cfg *config) makeClient(to []int) *FSClerk {
 	return ck
 }
 
-func (cfg *config) deleteClient(ck *FSClerk) {
+func (cfg *config) deleteClient(ck *Clerk) {
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
 
@@ -223,7 +221,7 @@ func (cfg *config) deleteClient(ck *FSClerk) {
 }
 
 // caller should hold cfg.mu
-func (cfg *config) ConnectClientUnlocked(ck *FSClerk, to []int) {
+func (cfg *config) ConnectClientUnlocked(ck *Clerk, to []int) {
 	log.Printf("ConnectClient %v to %v\n", ck, to)
 	endnames := cfg.clerks[ck]
 	for j := 0; j < len(to); j++ {
@@ -232,14 +230,14 @@ func (cfg *config) ConnectClientUnlocked(ck *FSClerk, to []int) {
 	}
 }
 
-func (cfg *config) ConnectClient(ck *FSClerk, to []int) {
+func (cfg *config) ConnectClient(ck *Clerk, to []int) {
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
 	cfg.ConnectClientUnlocked(ck, to)
 }
 
 // caller should hold cfg.mu
-func (cfg *config) DisconnectClientUnlocked(ck *FSClerk, from []int) {
+func (cfg *config) DisconnectClientUnlocked(ck *Clerk, from []int) {
 	log.Printf("DisconnectClient %v from %v\n", ck, from)
 	endnames := cfg.clerks[ck]
 	for j := 0; j < len(from); j++ {
@@ -248,7 +246,7 @@ func (cfg *config) DisconnectClientUnlocked(ck *FSClerk, from []int) {
 	}
 }
 
-func (cfg *config) DisconnectClient(ck *FSClerk, from []int) {
+func (cfg *config) DisconnectClient(ck *Clerk, from []int) {
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
 	cfg.DisconnectClientUnlocked(ck, from)
@@ -318,7 +316,7 @@ func (cfg *config) StartServer(i int) {
 	cfg.fileServers[i] = StartFileServer(ends, i, cfg.saved[i], cfg.maxraftstate)
 
 	kvsvc := labrpc.MakeService(cfg.fileServers[i])
-	rfsvc := labrpc.MakeService(cfg.fileServers[i].raft())
+	rfsvc := labrpc.MakeService(cfg.fileServers[i].Raft())
 	srv := labrpc.MakeServer()
 	srv.AddService(kvsvc)
 	srv.AddService(rfsvc)
@@ -330,8 +328,8 @@ func (cfg *config) Leader() (bool, int) {
 	defer cfg.mu.Unlock()
 
 	for i := 0; i < cfg.n; i++ {
-		_, is_leader := cfg.fileServers[i].raft().GetState()
-		if is_leader {
+		_, isLeader := cfg.fileServers[i].Raft().GetState()
+		if isLeader {
 			return true, i
 		}
 	}
@@ -358,10 +356,10 @@ func (cfg *config) make_partition() ([]int, []int) {
 	return p1, p2
 }
 
-var ncpu_once sync.Once
+var ncpuOnce sync.Once
 
 func make_config(t *testing.T, n int, unreliable bool, maxraftstate int) *config {
-	ncpu_once.Do(func() {
+	ncpuOnce.Do(func() {
 		if runtime.NumCPU() < 2 {
 			fmt.Printf("warning: only one CPU, which may conceal locking bugs\n")
 		}
@@ -375,7 +373,7 @@ func make_config(t *testing.T, n int, unreliable bool, maxraftstate int) *config
 	cfg.fileServers = make([]*FileServer, cfg.n)
 	cfg.saved = make([]*raft.Persister, cfg.n)
 	cfg.endnames = make([][]string, cfg.n)
-	cfg.clerks = make(map[*FSClerk][]string)
+	cfg.clerks = make(map[*Clerk][]string)
 	cfg.nextClientId = cfg.n + 1000 // client ids start 1000 above the highest serverid
 	cfg.maxraftstate = maxraftstate
 	cfg.start = time.Now()

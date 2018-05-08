@@ -18,7 +18,7 @@ const (
 	RPC                        // no more than one per RPC or state change
 	WARN                       // big warnings
 	NONE                       // for submission
-	CURRENT_DEBUG_LEVEL = RPC
+	CURRENT_DEBUG_LEVEL = NONE
 )
 
 // Make sure that logging a debug message is atomic

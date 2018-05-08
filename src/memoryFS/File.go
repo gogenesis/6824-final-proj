@@ -1,7 +1,7 @@
 package memoryFS
 
 import (
-	"fsraft"
+	"filesystem"
 )
 
 // A file (not a directory) in a filesystem.
@@ -12,7 +12,7 @@ import (
 type File struct {
 	inode    Inode
 	isOpen   bool
-	openMode fsraft.OpenMode
+	openMode filesystem.OpenMode
 	contents []byte
 	offset   int // Invariant: offset >= 0
 }
@@ -25,17 +25,17 @@ func (file *File) Name() string {
 }
 
 // See FileSystem::Open.
-func (file *File) Open(mode fsraft.OpenMode, flags fsraft.OpenFlags) (err error) {
+func (file *File) Open(mode filesystem.OpenMode, flags filesystem.OpenFlags) (err error) {
 	if file.isOpen {
-		return fsraft.AlreadyOpen
+		return filesystem.AlreadyOpen
 	}
 	file.isOpen = true
 	file.openMode = mode
-	if fsraft.FlagIsSet(flags, fsraft.Truncate) {
+	if filesystem.FlagIsSet(flags, filesystem.Truncate) {
 		file.contents = make([]byte, 0)
 		file.offset = 0
 	}
-	if fsraft.FlagIsSet(flags, fsraft.Append) {
+	if filesystem.FlagIsSet(flags, filesystem.Append) {
 		file.offset = len(file.contents)
 	}
 	return nil
@@ -51,7 +51,7 @@ func (file *File) Close() (success bool, err error) {
 }
 
 // See FileSystem::Seek.
-func (file *File) Seek(offset int, base fsraft.SeekMode) (newPosition int, err error) {
+func (file *File) Seek(offset int, base filesystem.SeekMode) (newPosition int, err error) {
 	// currently supporting FromBeginning
 	file.offset = offset
 	return file.offset, nil
@@ -61,7 +61,7 @@ func (file *File) Seek(offset int, base fsraft.SeekMode) (newPosition int, err e
 func (file *File) Read(numBytes int) (bytesRead int, data []byte, err error) {
 	readBytes := make([]byte, numBytes)
 	if numBytes < 0 {
-		return -1, make([]byte, 0), fsraft.IllegalArgument
+		return -1, make([]byte, 0), filesystem.IllegalArgument
 	}
 	//  DEBUG CODE stashed ... please remind me how we do leveled logs
 	print("offset")

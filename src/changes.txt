@@ -1,0 +1,9 @@
+Added Raft integration and rearranged packages.
+
+Filled out clerk.go, fs_server.go, and ops.go with my code from lab 3. 
+Split ad/assertDebug.go into assert.go and debug.go.
+Moved code generation into new package "main". Generate code by running "go generate" in src/main/.
+Created new package "filesystem" for the interface and supporting files because they are not
+specific to fsraft.
+Removed legacy package "tree".
+Removed difficulty OneServer because a Raft instance with no peers doesn't work.
