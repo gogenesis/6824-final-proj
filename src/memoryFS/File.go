@@ -1,6 +1,7 @@
 package memoryFS
 
 import (
+	"ad"
 	"filesystem"
 )
 
@@ -91,6 +92,8 @@ func (file *File) Write(numBytes int, data []byte) (bytesWritten int, err error)
 	// grow file as needed, leaving holes >EOF written
 	if file.offset+numBytes > len(file.contents) {
 		// DEBUG CODE stashed ... please remind me how we do leveled logs
+		// ad.Debug(ad.TRACE or ad.RPC, "format string with arguments %v and %v", "foo", "bar")
+		// You don't have to worry about the newline; it's automatically added at the end of every debug statement.
 		print("offset")
 		print(file.offset)
 		print("\n")
