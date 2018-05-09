@@ -13,6 +13,12 @@ import (
 // Instead, these functionality tests can run against any class that implements the FileSystem interface
 // by creating a unit test suite for your implementation class that calls these tests.
 
+func HelpVerifyBytes(t *testing.T, a []byte, b []byte, msg string) {
+   ad.AssertExplainT(t, len(a) == len(b), "len(a) %d != len(b) %d", len(a), len(b))
+   for i := 0; i < len(a); i++ {
+	   ad.AssertExplainT(t, a[i] == b[i], msg, i, a[i], b[i])
+   }
+}
 // ===== BEGIN OPEN CLOSE DELETE HELPERS =====
 
 func HelpDelete(t *testing.T, fs FileSystem,
@@ -94,7 +100,7 @@ func HelpMkdir(t *testing.T, fs FileSystem,
 
 // ===== BEGIN READ WRITE SEEK HELPERS =====
 
-func HelpMakeBytes(t *testing.T, n int) []byte {
+func HelpMakeRndBytes(t *testing.T, n int) []byte {
 	rndBytes := make([]byte, n)
 	num, err := rand.Read(rndBytes)
 	ad.AssertExplainT(t, num == n, "mkbyte %d instead of %d", num, n)
@@ -123,26 +129,25 @@ func HelpRead(t *testing.T, fs FileSystem, fd int, numBytes int) (int, []byte) {
 
 // error checked helper
 func HelpWrite(t *testing.T, fs FileSystem,
-	fd int, contents string) int {
-	bytes := []byte(contents)
-	numBytes := len(bytes)
-	numWritten, err := fs.Write(fd, numBytes, bytes)
+	fd int, nBytes int, bytes []byte) int {
+	nWr, err := fs.Write(fd, nBytes, bytes)
 	ad.AssertNoErrorT(t, err)
-	ad.AssertEqualsT(t, numBytes, numWritten)
-	return numWritten
+	ad.AssertEqualsT(t, nBytes, nWr)
+	return nWr
 }
 
 // error checked helper
 func HelpReadWrite(t *testing.T, fs FileSystem,
-	path string, contents string) int {
+	path string, strData string) int {
+   contents := []byte(strData)
 	fd := HelpOpen(t, fs, path, ReadWrite, Create)
 	HelpSeek(t, fs, fd, 0, FromBeginning)
-	nBytes := HelpWrite(t, fs, fd, contents)
+	nBytes := HelpWrite(t, fs, fd, len(contents), contents)
 	ad.AssertExplainT(t, nBytes == len(contents),
 		"%d bytes written vs %d", nBytes, len(contents))
 	HelpSeek(t, fs, fd, 0, FromBeginning) //rewind to start reading
 	nBytes, data := HelpRead(t, fs, fd, len(contents))
-	for bite := 0; bite < len(contents); bite++ {
+	for bite := 0; bite < len(contents); bite++ { //byte is reserved
 		ad.AssertExplainT(t, data[bite] == contents[bite],
 			"read data %s vs %s", data[bite], contents[bite])
 	}
@@ -161,7 +166,6 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestOpenNotFound,
 	TestOpenAlreadyExists,
 	TestOpenROClose,
-	TestOpenROClose, //dup?
 	TestOpenROClose4,
 	TestOpenROClose64,
 	TestOpenRWClose,
@@ -184,14 +188,15 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestWrite10MBytes,
 	TestWrite100MBytes,
 	TestReadClosedFile,
-	TestWriteRead1ByteSimple,
-	TestWriteRead8BytesSimple,
-	TestWriteRead8BytesIter8,
-	TestWriteRead8BytesIter64,
-	TestWriteRead64BytesIter64K,
-	TestWriteRead64KBIter1MB,
-	TestWriteRead64KBIter10MB,
-	TestWriteRead1MBIter100MB,
+	TestRndWriteRead1ByteSimple,
+	TestRndWriteRead8BytesSimple,
+	TestRndWriteRead8BytesIter8,
+	TestRndWriteRead8BytesIter64,
+	TestRndWriteRead64BytesIter64K,
+	TestRndWriteRead64KBIter1MB,
+	TestRndWriteRead64KBIter10MB,
+	TestRndWriteRead1MBIter100MB,
+   TestRndWriteReadFewHoleyBytes,
 	// ========= the line in the sand =======
 	//TestMkdir,
 	//TestMkdirTree,
@@ -228,14 +233,14 @@ var testNames = []string{
 	"TestWrite10MBytes",
 	"TestWrite100MBytes",
 	"TestReadClosedFile",
-	"TestWriteRead1ByteSimple",
-	"TestWriteRead8BytesSimple",
-	"TestWriteRead8BytesIter8",
-	"TestWriteRead8BytesIter64",
-	"TestWriteRead64BytesIter64K",
-	"TestWriteRead64KBIter1MB",
-	"TestWriteRead64KBIter10MB",
-	"TestWriteRead1MBIter100MB",
+	"TestRndWriteRead1ByteSimple",
+	"TestRndWriteRead8BytesSimple",
+	"TestRndWriteRead8BytesIter8",
+	"TestRndWriteRead8BytesIter64",
+	"TestRndWriteRead64BytesIter64K",
+	"TestRndWriteRead64KBIter1MB",
+	"TestRndWriteRead64KBIter10MB",
+	"TestRndWriteRead1MBIter100MB",
 	"TestMkdir",
 	"TestMkdirTree",
 	"TestOpenCloseDeleteAcrossDirectories",
@@ -245,7 +250,7 @@ var testNames = []string{
 // eventually could automate the generation and push of the entire Jenkinsfile.
 func TestHelpGenerateJenkinsPipeline(t *testing.T, fs FileSystem) {
 	moduleStr := "MemoryFS"
-	//TODO timestamp the generation ... share with D's generation code eventually
+	//TODO timestamp the generation ... share with D's raft test case generation code eventually
 	for i := 0; i < len(testNames); i++ {
 		print(fmt.Sprintf(" stage('DB3 TestMemoryFS_%s') {\n", testNames[i]))
 		print("\t\tsteps {\n")
@@ -469,7 +474,7 @@ func TestSeekOffEOF(t *testing.T, fs FileSystem) {
 // TODO need a debug interface to simulate the test datastore has an IO error...
 
 func TestWriteClosedFile(t *testing.T, fs FileSystem) {
-	n, err := fs.Write(555, 5, HelpMakeBytes(t, 5)) //must be uninit
+	n, err := fs.Write(555, 5, HelpMakeRndBytes(t, 5)) //must be uninit
 	ad.AssertExplainT(t, err == InactiveFD, "err %s", err)
 	ad.AssertExplainT(t, n == -1, "wr %d", n)
 }
@@ -478,7 +483,7 @@ func TestWriteNBytesIter(t *testing.T, fs FileSystem, fileName string, nBytes in
 	fd := HelpOpen(t, fs, fileName, ReadWrite, Create)
 	data := make([]byte, 0)
 	for i := 0; i < iters; i++ {
-		data = HelpMakeBytes(t, nBytes)
+		data = HelpMakeRndBytes(t, nBytes)
 		ad.AssertExplainT(t, len(data) == nBytes, "made %d len array", len(data))
 		n, err := fs.Write(fd, nBytes, data)
 		ad.AssertExplainT(t, err == nil, "err %s", err)
@@ -520,12 +525,14 @@ func TestReadClosedFile(t *testing.T, fs FileSystem) {
 	ad.AssertExplainT(t, n == -1, "wr %d", n)
 	ad.AssertExplainT(t, len(data) == 0, "no data should have been read")
 }
-func TestWriteReadNBytesIter(t *testing.T, fs FileSystem,
+
+func TestRndWriteReadNBytesIter(t *testing.T, fs FileSystem,
 	fileName string, nBytes int, iters int) {
 	fd := HelpOpen(t, fs, fileName, ReadWrite, Create)
 	dataIn := make([]byte, 0)
 	for i := 0; i < iters; i++ {
-		dataIn = HelpMakeBytes(t, nBytes)
+      //@dedup
+		dataIn = HelpMakeRndBytes(t, nBytes)
 		ad.AssertExplainT(t, len(dataIn) == nBytes, "made %d len array", len(dataIn))
 		nWr, err := fs.Write(fd, nBytes, dataIn)
 		ad.AssertExplainT(t, err == nil, "err %s", err)
@@ -557,41 +564,85 @@ func TestWriteReadBasic4(t *testing.T, fs FileSystem) {
 
 // ====== BYTE LEVEL WRITE & READ CHUNK TESTS =====
 
-func TestWriteRead1ByteSimple(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-1-simple.txt", 1, 1)
+func TestRndWriteRead1ByteSimple(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-8.txt", 1, 1)
 }
 
-func TestWriteRead8BytesSimple(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-8.txt", 8, 1)
+func TestRndWriteRead8BytesSimple(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-8.txt", 8, 1)
 }
 
-func TestWriteRead8BytesIter8(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-8-iter-8.txt", 8, 8)
+func TestRndWriteRead8BytesIter8(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-8-iter-8.txt", 8, 8)
 }
 
-func TestWriteRead8BytesIter64(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-8-iter-64.txt", 8, 64)
+func TestRndWriteRead8BytesIter64(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-8-iter-64.txt", 8, 64)
 }
 
-func TestWriteRead64BytesSimple(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-64-iter-1.txt", 64, 1)
+func TestRndWriteRead64BytesSimple(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-64-iter-1.txt", 64, 1)
 }
 
-func TestWriteRead64BytesIter64K(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-64k-iter-1K.txt", 64, 1000)
+func TestRndWriteRead64BytesIter64K(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-1K.txt", 64, 1000)
 }
 
-func TestWriteRead64KBIter1MB(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-64k-iter-10M.txt", 6400, 160)
+func TestRndWriteRead64KBIter1MB(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-10M.txt", 6400, 160)
 }
 
-func TestWriteRead64KBIter10MB(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-64k-iter-100M.txt", 6400, 1600)
+func TestRndWriteRead64KBIter10MB(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-100M.txt", 6400, 1600)
 }
 
-func TestWriteRead1MBIter100MB(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-1MB-iter-100M.txt", 1000000, 10)
+func TestRndWriteRead1MBIter100MB(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-1MB-iter-100M.txt", 1000000, 10)
 }
+
+
+func TestRndWriteReadFewHoleyBytes(t *testing.T, fs FileSystem) {
+   fd := HelpOpen(t, fs, "/few-holey-bytes.txt", ReadWrite, Create)
+   nBytes := 64
+   shore := HelpMakeRndBytes(t, nBytes)                                         // 64 random bytes
+   HelpWrite(t, fs, fd, nBytes, shore)                                          // offset now 64
+   HelpSeek(t, fs, fd, 0, FromBeginning)                                        // offset now 0
+   _, shoreRd := HelpRead(t, fs, fd, nBytes)                                    // offset now 64
+   HelpVerifyBytes(t, shore, shoreRd, "shore integrity; i=%d (%d vs %d)")
+
+                                                                                //                 64 byte hole 128                      256
+   // seek past EOF                                                             // ----- 64 bytes |              | island                 |
+   nBytes = 128
+   HelpSeek(t, fs, fd, 64, FromBeginning)                                       // offset now 128 leaving 64 byte gap
+   // write another few bytes to make an island
+   island := HelpMakeRndBytes(t, nBytes)
+   fs.Write(fd, nBytes, island)                                                 // offset now 256 leaving 128 rnd byte island
+   HelpSeek(t, fs, fd, 0, FromBeginning)                                        // offset now 0   
+
+   nBytes = 64
+   _, shoreRd = HelpRead(t, fs, fd, nBytes)                                     // offset now 64 (beginning of hole)
+   HelpVerifyBytes(t, shore, island, "1st island deviation")
+   // verify the zero filled hole appeared
+   _, holeRd := HelpRead(t, fs, fd, nBytes)                                     // offset now 128 (end of hole / beginning of island)
+   HelpVerifyBytes(t, make([]byte, nBytes), holeRd, "hole deviation")
+
+   // verify island
+   _, islandRd := HelpRead(t, fs, fd, 64)                                       // offset now 128 
+   HelpVerifyBytes(t, island, islandRd, "2nd island deviation")
+
+   // PUT IN OWN TEST EVENTUALLY
+   // verify read past EOF results in 0 bytes read
+   nRd, data := HelpRead(t, fs, fd, 1)                                          // seek past EOF at 257
+   ad.AssertExplainT(t, nRd == 0, "EOF read %d", nRd)
+   ad.AssertExplainT(t, len(data) == 0, "EOF len(data) %d", len(data))
+
+   fs.Close(fd)
+   fs.Delete("/few-holey-bytes.txt")
+}
+
+
+// ===== THE LINE IN THE SAND ==========
+// TOMORROW: Wed 5/9/18
 
 // ===== BEGIN WRITE READ HOLE TESTS =====
 
