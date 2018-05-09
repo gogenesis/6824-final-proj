@@ -58,16 +58,12 @@ func debugPrivate(level int, stateStr string, formatStr string, a ...interface{}
 	levelName := debugLevelName(level)
 	//fmt.Printf("%v %v ", packageName, levelName)
 	if level <= packageNamesToDebugLevels[packageName] {
-		//fmt.Printf("<= %v, printing\n", debugLevelName(packageNamesToDebugLevels[packageName]))
-		// these are tbh pretty arbitrary amounts of padding
-		// - for left-align
+		// these are tbh pretty arbitrary amounts of padding. - makes it left-aligned.
 		packageWithPadding := fmt.Sprintf("%-8v", packageName)
 		fileWithPadding := fmt.Sprintf("%12v", file)
 		levelNameWithPadding := fmt.Sprintf("%-5v", levelName)
 
 		fmt.Printf("[%v %v] %v %v:%03d [%v] %v\n", packageWithPadding, levelNameWithPadding, t, fileWithPadding, lineNum, stateStr,
 			fmt.Sprintf(formatStr, a...))
-	} else {
-		//fmt.Printf("> %v, not printing\n", debugLevelName(packageNamesToDebugLevels[packageName]))
 	}
 }
