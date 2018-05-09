@@ -106,7 +106,7 @@ func (cfg *config) SnapshotSize() int {
 // attach server i to servers listed in to
 // caller must hold cfg.mu
 func (cfg *config) connectUnlocked(i int, to []int) {
-	ad.Debug(ad.RPC, "connect peer %d to %v\n", i, to)
+	ad.Debug(ad.RPC, "connect peer %d to %v", i, to)
 
 	// outgoing socket files
 	for j := 0; j < len(to); j++ {
