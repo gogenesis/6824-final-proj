@@ -251,7 +251,7 @@ func TestHelpGenerateJenkinsPipeline(t *testing.T, fs FileSystem) {
 		print("\t\tsteps {\n")
 		print("\t\t\tscript {\n")
 		print(fmt.Sprintf("\t\t\t\tsh 'THA_GO_DEBUG=3 DFS_DEFAULT_DEBUG_LEVEL=3 "+ //ugly ... break string into local vars eventually
-			"GO_TEST_PKG=Test%s_%s /volumes/babtin-volume/babtin/babtin/jenkins_dse_debug_optimized.sh 2 16 2 16'\n", moduleStr, testNames[i]))
+			"GO_TEST_PKG=Test%s_%s /volumes/babtin-volume/babtin/babtin/jenkins_dse_debug_optimized.sh 1 1 1 1'\n", moduleStr, testNames[i]))
 		print("\t\t\t}\n")
 		print("\t\t}\n")
 		print("\t}\n")
