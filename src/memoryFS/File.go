@@ -1,6 +1,7 @@
 package memoryFS
 
 import (
+	"ad"
 	"filesystem"
 )
 
@@ -63,60 +64,39 @@ func (file *File) Read(numBytes int) (bytesRead int, data []byte, err error) {
 	if numBytes < 0 {
 		return -1, make([]byte, 0), filesystem.IllegalArgument
 	}
-	//  DEBUG CODE stashed ... please remind me how we do leveled logs
-	print("offset")
-	print(file.offset)
-	print("\n")
-	print("numBytes")
-	print(numBytes)
-	print("\n")
-	print("lenfile")
-	print(len(file.contents))
-	print("\n")
-	//TODO if directory, return IsDirectory
-	if file.offset+bytesRead > len(file.contents) { //if offset goes past end of file
+
+	//TODO @dir if directory {
+	//    return -1, IsDirectory
+	// }
+
+	if file.offset+numBytes > len(file.contents) { //if offset goes past end of file
 		return 0, make([]byte, 0), nil //no bytes are read
 	}
+	ad.AssertExplain(file.offset+numBytes <= len(file.contents),
+		"reading past end of data")
 	copy(readBytes, file.contents[file.offset:file.offset+numBytes])
 	file.offset += numBytes
-	print("offset now")
-	print(file.offset)
-	print("\n")
+	ad.Debug(ad.RPC, "offset now %d", file.offset)
 	return numBytes, readBytes, nil
 }
 
 // See FileSystem::Write.
 func (file *File) Write(numBytes int, data []byte) (bytesWritten int, err error) {
-	// when we have assert, assert numBytes == len(data) to catch tester bugs
+	ad.AssertExplain(numBytes == len(data), "bad numBytes %d vs len(data) %d",
+		numBytes, len(data))
 	// grow file as needed, leaving holes >EOF written
 	if file.offset+numBytes > len(file.contents) {
-		// DEBUG CODE stashed ... please remind me how we do leveled logs
-		// ad.Debug(ad.TRACE or ad.RPC, "format string with arguments %v and %v", "foo", "bar")
-		// You don't have to worry about the newline; it's automatically added at the end of every debug statement.
-		print("offset")
-		print(file.offset)
-		print("\n")
-		print("numBytes")
-		print(numBytes)
-		print("\n")
-		print("lenfile")
-		print(len(file.contents))
-		print("\nGROWING\n")
+		ad.Debug(ad.RPC, "growing file - offset %d numBytes %d len(contents) %d",
+			file.offset, numBytes, len(file.contents))
 		realloc := make([]byte, file.offset+numBytes)
 		copy(realloc[0:len(file.contents)], file.contents)
-		file.contents = realloc //garbage collect old contents but need to confirm
-		// DEBUG CODE
-		print("lenfile now")
-		print(len(file.contents))
-		print("\n")
+		file.contents = realloc //hopefully garbage collect old contents, needs confirm
 	}
 	copy(file.contents[file.offset:file.offset+numBytes], data)
 	// we currently assume all bytes are written correctly
 	// more strict checks would check datastore space first and write up to limit
 	file.offset += numBytes
-	print("offset now")
-	print(file.offset)
-	print("\n")
+	ad.Debug(ad.RPC, "done, seek offset %d, file now %d bytes", file.offset, len(file.contents))
 	return numBytes, nil
 }
 

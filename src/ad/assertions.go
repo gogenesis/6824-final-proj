@@ -54,8 +54,15 @@ func AssertIsErrorOrNil(object interface{}) error {
 	return object.(error)
 }
 
+// A version for use within the system
+func AssertExplain(cond bool, format string, a ...interface{}) {
+	if AssertionsEnabled && !cond {
+      panic(fmt.Sprintf("Assertation error! %s", fmt.Sprintf(format, a...)))
+	}
+}
+
 func AssertExplainT(t *testing.T, cond bool, format string, a ...interface{}) {
-	if !cond {
+	if AssertionsEnabled && !cond {
 		failWithMessageAndStackTrace(t, "Assertion error! %s", fmt.Sprintf(format, a...))
 	}
 }

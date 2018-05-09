@@ -134,7 +134,7 @@ func (mfs *MemoryFS) Seek(fileDescriptor int, offset int, base filesystem.SeekMo
 	}
 	curOffset, err := file.Seek(offset, base)
 	// ...
-	ad.Debug(ad.TRACE, "Done seeking FD %d", fileDescriptor)
+	ad.Debug(ad.TRACE, "FD %d seek complete - offset now %d", fileDescriptor, curOffset)
 	return curOffset, nil
 }
 

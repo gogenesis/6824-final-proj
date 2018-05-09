@@ -39,7 +39,7 @@ var errorCodesToNames = map[ErrorCode]string{
 	DirectoryNotEmpty: "DirectoryNotEmpty",
 	AlreadyExists:     "AlreadyExists",
 	AlreadyOpen:       "AlreadyOpen",
-	WriteTooLarge:       "WriteTooLarge",
+	WriteTooLarge:     "WriteTooLarge",
 }
 
 // Needed for ErrorCode to conform to the builtin interface "error",

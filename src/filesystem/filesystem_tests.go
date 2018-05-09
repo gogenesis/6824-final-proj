@@ -2,9 +2,9 @@ package filesystem
 
 import (
 	"ad"
+	"fmt"
+	"math/rand"
 	"testing"
-"fmt"
-"math/rand"
 )
 
 // Functionality tests for a FileSystem go here.
@@ -114,12 +114,10 @@ func HelpSeek(t *testing.T, fs FileSystem,
 }
 
 // error checked helper
-func HelpRead(t *testing.T, fs FileSystem,
-	fd int, contents string, numBytes int) (int, []byte) {
+func HelpRead(t *testing.T, fs FileSystem, fd int, numBytes int) (int, []byte) {
 	numRead, data, err := fs.Read(fd, numBytes)
 	ad.AssertNoErrorT(t, err)
 	ad.AssertEqualsT(t, numBytes, numRead)
-	ad.AssertEqualsT(t, contents, data)
 	return numRead, data
 }
 
@@ -142,7 +140,8 @@ func HelpReadWrite(t *testing.T, fs FileSystem,
 	nBytes := HelpWrite(t, fs, fd, contents)
 	ad.AssertExplainT(t, nBytes == len(contents),
 		"%d bytes written vs %d", nBytes, len(contents))
-	nBytes, data := HelpRead(t, fs, fd, contents, len(contents))
+	HelpSeek(t, fs, fd, 0, FromBeginning) //rewind to start reading
+	nBytes, data := HelpRead(t, fs, fd, len(contents))
 	for bite := 0; bite < len(contents); bite++ {
 		ad.AssertExplainT(t, data[bite] == contents[bite],
 			"read data %s vs %s", data[bite], contents[bite])
@@ -171,12 +170,12 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestOpenCloseDeleteMaxFD,
 	TestOpenCloseDeleteRoot,
 	TestOpenCloseDeleteRootMax,
-	TestReadWriteBasic,
-	TestReadWriteBasic4,
 	TestSeekErrorBadFD,
 	TestSeekErrorBadOffsetOperation,
 	TestSeekOffEOF,
 	TestWriteClosedFile,
+	TestWriteReadBasic,
+	TestWriteReadBasic4,
 	TestWrite1Byte,
 	TestWrite8Bytes,
 	TestWrite1KBytes,
@@ -184,12 +183,18 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestWrite10MBytes,
 	TestWrite100MBytes,
 	TestReadClosedFile,
-	TestWriteRead1Byte,
-	TestWriteRead8Bytes,
+	TestWriteRead1ByteSimple,
+	TestWriteRead8BytesSimple,
+	TestWriteRead8BytesIter8,
+	TestWriteRead8BytesIter64,
+	TestWriteRead64BytesIter64K,
+	TestWriteRead64KBIter1MB,
+	TestWriteRead64KBIter10MB,
+	TestWriteRead1MBIter100MB,
 	// ========= the line in the sand =======
-	TestMkdir,
-	TestMkdirTree,
-	TestOpenCloseDeleteAcrossDirectories,
+	//TestMkdir,
+	//TestMkdirTree,
+	//TestOpenCloseDeleteAcrossDirectories,
 }
 
 // ===== BEGIN OPEN CLOSE TESTS ======
@@ -349,46 +354,9 @@ func TestOpenCloseDeleteRootMax(t *testing.T, fs FileSystem) {
 //  ================== the line in the sand ====================
 //  keeps moving down as tests begin passing and stay passing!
 
-func TestOpenCloseDeleteAcrossDirectories(t *testing.T, fs FileSystem) {
-	HelpMkdir(t, fs, "/dir1")
-	HelpMkdir(t, fs, "/dir2")
-	HelpMkdir(t, fs, "/dir3")
-	fd1 := HelpOpen(t, fs, "/dir1/foo", ReadWrite, Create)
-	fd2 := HelpOpen(t, fs, "/dir2/bar", ReadWrite, Create)
-	fd3 := HelpOpen(t, fs, "/dir3/baz", ReadWrite, Create)
-	HelpClose(t, fs, fd1)
-	HelpClose(t, fs, fd2)
-	HelpClose(t, fs, fd3)
-	HelpDelete(t, fs, "/dir1/foo")
-	HelpDelete(t, fs, "/dir2/bar")
-	HelpDelete(t, fs, "/dir3/baz")
-	HelpDelete(t, fs, "/dir1")
-	HelpDelete(t, fs, "/dir2")
-	HelpDelete(t, fs, "/dir3")
-}
-
-//TODO larger trees coming soon...
-
 // ===== END OPEN CLOSE TESTS =====
 
-// ===== BEGIN READ WRITE TESTS =====
-
-func TestReadWriteBasic(t *testing.T, fs FileSystem) {
-	HelpReadWrite(t, fs, "/foo.txt", "bar")
-}
-
-func TestReadWriteBasic4(t *testing.T, fs FileSystem) {
-	HelpReadWrite(t, fs, "/foo1.txt", "bar1")
-	HelpReadWrite(t, fs, "/foo2.txt", "bar2")
-	HelpReadWrite(t, fs, "/foo3.txt", "bar3")
-	HelpReadWrite(t, fs, "/foo4.txt", "bar4")
-}
-
-// TODO longer file paths and contents coming soon...
-// TODO need a debug interface to simulate the test datastore runs out of space...
-// TODO need a debug interface to simulate the test datastore has an IO error...
-
-// ===== BEGIN SEEK DELETE TESTS =====
+// ===== BEGIN OPEN CLOSE SEEK & DELETE TESTS =====
 
 func TestSeekErrorBadFD(t *testing.T, fs FileSystem) {
 	// must open an invalid FD
@@ -434,6 +402,17 @@ func TestSeekOffEOF(t *testing.T, fs FileSystem) {
 	HelpDelete(t, fs, "/seek-eof.txt")
 }
 
+// ===== BEGIN ITERATIVE WRITE CHUNK TESTS EXPANDING FILES =====
+
+// TODO need a debug interface to simulate the test datastore runs out of space...
+// TODO need a debug interface to simulate the test datastore has an IO error...
+
+func TestWriteClosedFile(t *testing.T, fs FileSystem) {
+	n, err := fs.Write(555, 5, HelpMakeBytes(t, 5)) //must be uninit
+	ad.AssertExplainT(t, err == InactiveFD, "err %s", err)
+	ad.AssertExplainT(t, n == -1, "wr %d", n)
+}
+
 func TestWriteNBytesIter(t *testing.T, fs FileSystem, fileName string, nBytes int, iters int) {
 	fd := HelpOpen(t, fs, fileName, ReadWrite, Create)
 	data := make([]byte, 0)
@@ -446,12 +425,6 @@ func TestWriteNBytesIter(t *testing.T, fs FileSystem, fileName string, nBytes in
 	}
 	HelpClose(t, fs, fd)
 	HelpDelete(t, fs, fileName)
-}
-
-func TestWriteClosedFile(t *testing.T, fs FileSystem) {
-	n, err := fs.Write(555, 5, HelpMakeBytes(t, 5)) //must be uninit
-	ad.AssertExplainT(t, err == InactiveFD, "err %s", err)
-	ad.AssertExplainT(t, n == -1, "wr %d", n)
 }
 
 func TestWrite1Byte(t *testing.T, fs FileSystem) {
@@ -478,7 +451,16 @@ func TestWrite100MBytes(t *testing.T, fs FileSystem) {
 	TestWriteNBytesIter(t, fs, "/wr-100m.txt", 100000000, 3)
 }
 
-func TestWriteReadNBytesIter(t *testing.T, fs FileSystem, fileName string, nBytes int, iters int) {
+// ===== BEGIN ITERATIVE WRITE & READ CHUNK TESTS EXPANDING FILES =====
+
+func TestReadClosedFile(t *testing.T, fs FileSystem) {
+	n, data, err := fs.Read(555, 5) //must be uninit
+	ad.AssertExplainT(t, err == InactiveFD, "err %s", err)
+	ad.AssertExplainT(t, n == -1, "wr %d", n)
+	ad.AssertExplainT(t, len(data) == 0, "no data should have been read")
+}
+func TestWriteReadNBytesIter(t *testing.T, fs FileSystem,
+	fileName string, nBytes int, iters int) {
 	fd := HelpOpen(t, fs, fileName, ReadWrite, Create)
 	dataIn := make([]byte, 0)
 	for i := 0; i < iters; i++ {
@@ -487,41 +469,76 @@ func TestWriteReadNBytesIter(t *testing.T, fs FileSystem, fileName string, nByte
 		nWr, err := fs.Write(fd, nBytes, dataIn)
 		ad.AssertExplainT(t, err == nil, "err %s", err)
 		ad.AssertExplainT(t, nWr == nBytes, "wr %d", nWr)
-		HelpSeek(t, fs, fd, 0+(nBytes*iters)-1, FromBeginning)
-		_, _, err = fs.Read(fd, nBytes)
+		// seek back to beginning of write for the current chunk
+		HelpSeek(t, fs, fd, 0+nBytes*i, FromBeginning)
+		nRd, dataOut, err := fs.Read(fd, nBytes) //should put seek back at end of write block
 		ad.AssertExplainT(t, err == nil, "err %s", err)
-		//ad.AssertExplainT(t, nRd == nBytes, "rd %d", nRd)
-		//for i := 0; i < len(dataIn); i++ {
-		//   ad.AssertExplainT(t, dataIn[i] == dataOut[i],
-		//      "data was corrupted at i=%d (%d vs %d)", i, dataIn[i], dataOut[i])
-		//}
-		HelpSeek(t, fs, fd, 0+(nBytes*iters)-1, FromBeginning)
+		ad.AssertExplainT(t, nRd == nBytes, "rd %d", nRd)
+		for i := 0; i < len(dataIn); i++ {
+			ad.AssertExplainT(t, dataIn[i] == dataOut[i],
+				"data was corrupted at i=%d (%d vs %d)", i, dataIn[i], dataOut[i])
+		}
 	}
 	HelpClose(t, fs, fd)
 	HelpDelete(t, fs, fileName)
 }
 
-func TestReadClosedFile(t *testing.T, fs FileSystem) {
-	n, data, err := fs.Read(555, 5) //must be uninit
-	ad.AssertExplainT(t, err == InactiveFD, "err %s", err)
-	ad.AssertExplainT(t, n == -1, "wr %d", n)
-	ad.AssertExplainT(t, len(data) == 0, "no data should have been read")
+func TestWriteReadBasic(t *testing.T, fs FileSystem) {
+	HelpReadWrite(t, fs, "/foo.txt", "bar")
 }
 
-func TestWriteRead1Byte(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-1.txt", 1, 5)
+func TestWriteReadBasic4(t *testing.T, fs FileSystem) {
+	HelpReadWrite(t, fs, "/foo1.txt", "bar1")
+	HelpReadWrite(t, fs, "/foo2.txt", "bar2")
+	HelpReadWrite(t, fs, "/foo3.txt", "bar3")
+	HelpReadWrite(t, fs, "/foo4.txt", "bar4")
 }
 
-func TestWriteRead8Bytes(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-8.txt", 8, 5)
+// ====== BYTE LEVEL WRITE & READ CHUNK TESTS =====
+
+func TestWriteRead1ByteSimple(t *testing.T, fs FileSystem) {
+	TestWriteReadNBytesIter(t, fs, "/r-1-simple.txt", 1, 1)
 }
 
-// ===== BEGIN SWEEP AND WRITE TESTS =====
+func TestWriteRead8BytesSimple(t *testing.T, fs FileSystem) {
+	TestWriteReadNBytesIter(t, fs, "/r-8.txt", 8, 1)
+}
+
+func TestWriteRead8BytesIter8(t *testing.T, fs FileSystem) {
+	TestWriteReadNBytesIter(t, fs, "/r-8-iter-8.txt", 8, 8)
+}
+
+func TestWriteRead8BytesIter64(t *testing.T, fs FileSystem) {
+	TestWriteReadNBytesIter(t, fs, "/r-8-iter-64.txt", 8, 64)
+}
+
+func TestWriteRead64BytesSimple(t *testing.T, fs FileSystem) {
+	TestWriteReadNBytesIter(t, fs, "/r-64-iter-1.txt", 64, 1)
+}
+
+func TestWriteRead64BytesIter64K(t *testing.T, fs FileSystem) {
+	TestWriteReadNBytesIter(t, fs, "/r-64k-iter-1K.txt", 64, 1000)
+}
+
+func TestWriteRead64KBIter1MB(t *testing.T, fs FileSystem) {
+	TestWriteReadNBytesIter(t, fs, "/r-64k-iter-10M.txt", 6400, 160)
+}
+
+func TestWriteRead64KBIter10MB(t *testing.T, fs FileSystem) {
+	TestWriteReadNBytesIter(t, fs, "/r-64k-iter-100M.txt", 6400, 1600)
+}
+
+func TestWriteRead1MBIter100MB(t *testing.T, fs FileSystem) {
+	TestWriteReadNBytesIter(t, fs, "/r-1MB-iter-100M.txt", 1000000, 10)
+}
+
+// ===== BEGIN WRITE READ HOLE TESTS =====
 
 // TODO these will start writing larger amounts of data
-// TODO next set of tests will create holes, seek around, fill files with data
+// TODO the next set of tests will create holes, seek around, fill files with data
 
 // ===== BEGIN MKDIR TESTS =====
+// TODO subdirectories next...
 
 func TestMkdir(t *testing.T, fs FileSystem) {
 	HelpMkdir(t, fs, "/a-dir-1")
@@ -549,4 +566,22 @@ func TestMkdirTree(t *testing.T, fs FileSystem) {
 	HelpDelete(t, fs, "/a-dir-4")
 }
 
-// TODO subdirectories next...
+//TODO larger trees coming soon
+
+func TestOpenCloseDeleteAcrossDirectories(t *testing.T, fs FileSystem) {
+	HelpMkdir(t, fs, "/dir1")
+	HelpMkdir(t, fs, "/dir2")
+	HelpMkdir(t, fs, "/dir3")
+	fd1 := HelpOpen(t, fs, "/dir1/foo", ReadWrite, Create)
+	fd2 := HelpOpen(t, fs, "/dir2/bar", ReadWrite, Create)
+	fd3 := HelpOpen(t, fs, "/dir3/baz", ReadWrite, Create)
+	HelpClose(t, fs, fd1)
+	HelpClose(t, fs, fd2)
+	HelpClose(t, fs, fd3)
+	HelpDelete(t, fs, "/dir1/foo")
+	HelpDelete(t, fs, "/dir2/bar")
+	HelpDelete(t, fs, "/dir3/baz")
+	HelpDelete(t, fs, "/dir1")
+	HelpDelete(t, fs, "/dir2")
+	HelpDelete(t, fs, "/dir3")
+}
