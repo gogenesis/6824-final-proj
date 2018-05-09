@@ -2,7 +2,7 @@ package memoryFS
 
 import (
 	"ad"
-	"fsraft"
+	"filesystem"
 	"path"
 	"strings"
 )
@@ -38,7 +38,7 @@ func (mfs *MemoryFS) Mkdir(path string) (success bool, err error) {
 }
 
 // See the spec for FileSystem::Open.
-func (mfs *MemoryFS) Open(filePath string, mode fsraft.OpenMode, flags fsraft.OpenFlags) (fileDescriptor int, err error) {
+func (mfs *MemoryFS) Open(filePath string, mode filesystem.OpenMode, flags filesystem.OpenFlags) (fileDescriptor int, err error) {
 	ad.Debug(ad.TRACE, "Starting Open(%v, %v, %v)", filePath, mode.String(), flags)
 	fileDescriptor = -1 // in case we return early, set it here
 
@@ -50,23 +50,23 @@ func (mfs *MemoryFS) Open(filePath string, mode fsraft.OpenMode, flags fsraft.Op
 		// proceed as normal
 
 	case ParentExistsButNodeDoesNot:
-		if fsraft.FlagIsSet(flags, fsraft.Create) {
+		if filesystem.FlagIsSet(flags, filesystem.Create) {
 			currentDir.CreateFile(fileName)
 			node = currentDir.GetChildNamed(fileName) // because node was set to nil before because it didn't exist
 		} else {
-			err = fsraft.NotFound
+			err = filesystem.NotFound
 			return
 		}
 
 	case ParentDoesNotExist:
-		err = fsraft.NotFound
+		err = filesystem.NotFound
 		return
 	}
 
 	file, isFile := node.(*File)
 	ad.Assert(node != nil)
 	if !isFile {
-		err = fsraft.IsDirectory
+		err = filesystem.IsDirectory
 		return
 	}
 
@@ -85,11 +85,11 @@ func (mfs *MemoryFS) Open(filePath string, mode fsraft.OpenMode, flags fsraft.Op
 		if fdIsActive {
 			mfs.smallestAvailableFD++
 			// + 3 for the reserved FDs 0, 1, and 2.
-		} else if mfs.smallestAvailableFD > fsraft.MaxActiveFDs+3 {
+		} else if mfs.smallestAvailableFD > filesystem.MaxActiveFDs+3 {
 			// Rewind the operation
 			mfs.smallestAvailableFD = fileDescriptor
 			fileDescriptor = -1
-			err = fsraft.TooManyFDsOpen
+			err = filesystem.TooManyFDsOpen
 			return
 		} else {
 			// we've found our new smallestAvailableFD
@@ -106,7 +106,7 @@ func (mfs *MemoryFS) Close(fileDescriptor int) (success bool, err error) {
 	ad.Debug(ad.TRACE, "Closing FD %v", fileDescriptor)
 	file, fdIsActive := mfs.activeFDs[fileDescriptor]
 	if !fdIsActive {
-		return false, fsraft.InactiveFD
+		return false, filesystem.InactiveFD
 	}
 	success, err = file.Close()
 	if success {
@@ -121,20 +121,20 @@ func (mfs *MemoryFS) Close(fileDescriptor int) (success bool, err error) {
 }
 
 // See the spec for FileSystem::Seek.
-func (mfs *MemoryFS) Seek(fileDescriptor int, offset int, base fsraft.SeekMode) (newPosition int, err error) {
+func (mfs *MemoryFS) Seek(fileDescriptor int, offset int, base filesystem.SeekMode) (newPosition int, err error) {
 	file, fdIsActive := mfs.activeFDs[fileDescriptor]
 	if !fdIsActive {
-		return -1, fsraft.InactiveFD
+		return -1, filesystem.InactiveFD
 	}
 	if base < 0 || base > 2 { // man lseek - EINVAL
-		return -1, fsraft.IllegalArgument
+		return -1, filesystem.IllegalArgument
 	}
 	if offset < 0 { // man lseek - EINVAL
-		return -1, fsraft.IllegalArgument
+		return -1, filesystem.IllegalArgument
 	}
 	curOffset, err := file.Seek(offset, base)
 	// ...
-	ad.Debug(ad.TRACE, "Done seeking FD %d", fileDescriptor)
+	ad.Debug(ad.TRACE, "FD %d seek complete - offset now %d", fileDescriptor, curOffset)
 	return curOffset, nil
 }
 
@@ -142,7 +142,7 @@ func (mfs *MemoryFS) Seek(fileDescriptor int, offset int, base fsraft.SeekMode) 
 func (mfs *MemoryFS) Read(fileDescriptor int, numBytes int) (bytesRead int, data []byte, err error) {
 	file, fdIsActive := mfs.activeFDs[fileDescriptor]
 	if !fdIsActive {
-		return -1, make([]byte, 0), fsraft.InactiveFD
+		return -1, make([]byte, 0), filesystem.InactiveFD
 	}
 	return file.Read(numBytes)
 }
@@ -151,7 +151,7 @@ func (mfs *MemoryFS) Read(fileDescriptor int, numBytes int) (bytesRead int, data
 func (mfs *MemoryFS) Write(fileDescriptor int, numBytes int, data []byte) (bytesWritten int, err error) {
 	file, fdIsActive := mfs.activeFDs[fileDescriptor]
 	if !fdIsActive {
-		return -1, fsraft.InactiveFD
+		return -1, filesystem.InactiveFD
 	}
 	return file.Write(numBytes, data)
 }
@@ -170,12 +170,12 @@ func (mfs *MemoryFS) Delete(filePath string) (success bool, err error) {
 	case ParentExistsButNodeDoesNot:
 		fallthrough
 	case ParentDoesNotExist:
-		return false, fsraft.NotFound
+		return false, filesystem.NotFound
 	}
 
 	dir, nodeIsDirectory := node.(*Directory)
 	if nodeIsDirectory && len(dir.children) > 0 {
-		return false, fsraft.DirectoryNotEmpty
+		return false, filesystem.DirectoryNotEmpty
 	}
 
 	node.Delete()

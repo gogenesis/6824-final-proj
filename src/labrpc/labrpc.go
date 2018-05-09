@@ -93,7 +93,10 @@ func (e *ClientEnd) Call(svcMeth string, args interface{}, reply interface{}) bo
 
 	qb := new(bytes.Buffer)
 	qe := labgob.NewEncoder(qb)
-	qe.Encode(args)
+	err := qe.Encode(args)
+	if err != nil {
+		log.Fatalf("Encode error: %v", err.Error())
+	}
 	req.args = qb.Bytes()
 
 	select {

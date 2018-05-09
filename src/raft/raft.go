@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"ad"
 	"labrpc"
 	_ "net/http/pprof"
 	"time"
@@ -21,10 +22,10 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	defer rf.unlock()
 
 	if rf.CurrentElectionState != Leader {
-		debug(rf, TRACE, "Rejecting Start(%+v) because I am not the leader", command)
+		ad.DebugObj(rf, ad.TRACE, "Rejecting Start(%+v) because I am not the leader", command)
 		return 0, 0, false
 	}
-	debug(rf, TRACE, "Received Start(%+v)", command)
+	ad.DebugObj(rf, ad.TRACE, "Received Start(%+v)", command)
 
 	// +1 because it will go after the current last entry
 	entry := LogEntry{rf.CurrentTerm, command, rf.Log.length() + 1}
@@ -34,7 +35,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	}
 	rf.writePersist()
 
-	debug(rf, TRACE, "Sending new Log message to peers")
+	ad.DebugObj(rf, ad.TRACE, "Sending new Log message to peers")
 	for peerNum, _ := range rf.peers {
 		go rf.sendAppendEntries(peerNum, true)
 	}
@@ -43,8 +44,8 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	term := rf.CurrentTerm
 	isLeader := true
 
-	debug(rf, RPC, "returning (%d, %d, %t) from Start(%+v)", index, term, isLeader, command)
-	debug(rf, TRACE, "Log=%+v", rf.Log)
+	ad.DebugObj(rf, ad.RPC, "returning (%d, %d, %t) from Start(%+v)", index, term, isLeader, command)
+	ad.DebugObj(rf, ad.TRACE, "Log=%+v", rf.Log)
 
 	return index, term, isLeader
 }
@@ -52,7 +53,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 // The tester calls Kill() when a Raft instance won't be needed again.
 func (rf *Raft) Kill() {
 	rf.lock()
-	debug(rf, RPC, "Dying")
+	ad.DebugObj(rf, ad.RPC, "Dying")
 	rf.isAlive = false
 	rf.unlock()
 }
@@ -70,13 +71,13 @@ func (rf *Raft) ApplierThread() {
 			}
 
 			if rf.commitIndex > rf.lastApplied {
-				debug(rf, TRACE, "ApplierThread has awoken! Ready to apply indices up to %d", rf.commitIndex)
+				ad.DebugObj(rf, ad.TRACE, "ApplierThread has awoken! Ready to apply indices up to %d", rf.commitIndex)
 
 				for rf.lastApplied < rf.commitIndex {
 					indexToApply := rf.lastApplied + 1
 					entryToApply := rf.Log.get(indexToApply)
 					applyMsg := ApplyMsg{true, entryToApply.Command, indexToApply, rf.CurrentTerm, COMMAND}
-					debug(rf, TRACE, "About to apply %+v at index %d", entryToApply, indexToApply)
+					ad.DebugObj(rf, ad.TRACE, "About to apply %+v at index %d", entryToApply, indexToApply)
 					rf.lastApplied = indexToApply
 					rf.unlock()
 
@@ -85,7 +86,7 @@ func (rf *Raft) ApplierThread() {
 					rf.lock() // for the next iteration
 				}
 
-				debug(rf, TRACE, "ApplierThread going back to sleep.")
+				ad.DebugObj(rf, ad.TRACE, "ApplierThread going back to sleep.")
 			}
 
 			rf.unlock()
@@ -99,14 +100,14 @@ func (rf *Raft) ElectionThread() {
 		rf.lock()
 
 		if rf.CurrentElectionState == Leader {
-			debug(rf, TRACE, "ElectionThread going back to sleep until not the leader.")
+			ad.DebugObj(rf, ad.TRACE, "ElectionThread going back to sleep until not the leader.")
 			rf.unlock()
 
 			// blocking read
 			<-rf.becomeFollower
 
 			rf.lock()
-			debug(rf, RPC, "Becoming Follower")
+			ad.DebugObj(rf, ad.RPC, "Becoming Follower")
 			rf.CurrentElectionState = Follower
 			rf.writePersist()
 			rf.resetElectionTimeout()
@@ -118,12 +119,12 @@ func (rf *Raft) ElectionThread() {
 		}
 
 		if time.Now().After(rf.candidateDeclareTime) {
-			debug(rf, TRACE, "I should run for election")
+			ad.DebugObj(rf, ad.TRACE, "I should run for election")
 			go rf.runForElection()
 			rf.resetElectionTimeout()
 		}
 		sleepDuration := time.Until(rf.candidateDeclareTime)
-		debug(rf, TRACE, "ElectionThread going back to sleep for %v", sleepDuration.String())
+		ad.DebugObj(rf, ad.TRACE, "ElectionThread going back to sleep for %v", sleepDuration.String())
 		rf.unlock()
 		time.Sleep(sleepDuration)
 	}
@@ -134,7 +135,7 @@ func (rf *Raft) HeartbeatThread() {
 	for {
 		rf.lock()
 		if rf.CurrentElectionState != Leader {
-			debug(rf, TRACE, "HeartbeatThread waiting until is leader")
+			ad.DebugObj(rf, ad.TRACE, "HeartbeatThread waiting until is leader")
 			rf.unlock()
 
 			// blocking read
@@ -145,7 +146,7 @@ func (rf *Raft) HeartbeatThread() {
 			if term < rf.CurrentTerm {
 				// I became leader in a previous term but then advanced to my current term before I
 				// noticed I became a leader, so instead I should become a follower.
-				debug(rf, WARN, "Just noticed that I won election in term %d, but it's now term %d, so I'll stay a follower",
+				ad.DebugObj(rf, ad.WARN, "Just noticed that I won election in term %d, but it's now term %d, so I'll stay a follower",
 					term, rf.CurrentTerm)
 				assert(rf.CurrentElectionState != Leader)
 				rf.unlock()
@@ -154,7 +155,7 @@ func (rf *Raft) HeartbeatThread() {
 
 			// term > rf.CurrentTerm wouldn't make any sense
 			assert(term == rf.CurrentTerm)
-			debug(rf, RPC, "Becoming leader")
+			ad.DebugObj(rf, ad.RPC, "Becoming leader")
 			rf.CurrentElectionState = Leader
 			rf.writePersist()
 			for peerNum, _ := range rf.peers {
@@ -169,7 +170,7 @@ func (rf *Raft) HeartbeatThread() {
 			return
 		}
 
-		debug(rf, RPC, "Sending heartbeats. commitIndex=%+v, nextIndex=%+v, matchIndex=%+v",
+		ad.DebugObj(rf, ad.RPC, "Sending heartbeats. commitIndex=%+v, nextIndex=%+v, matchIndex=%+v",
 			rf.commitIndex, rf.nextIndex, rf.matchIndex)
 		for peerNum, _ := range rf.peers {
 			go rf.sendAppendEntries(peerNum, true)
@@ -186,7 +187,7 @@ func (rf *Raft) runForElection() {
 	rf.CurrentTerm += 1
 	rf.VotedFor = -1
 	rf.CurrentElectionState = Candidate
-	debug(rf, RPC, "Starting election and advancing term to %d", rf.CurrentTerm)
+	ad.DebugObj(rf, ad.RPC, "Starting election and advancing term to %d", rf.CurrentTerm)
 	rf.writePersist()
 	repliesChan := make(chan *RequestVoteReply, len(rf.peers)-1)
 	// The term the election was started in
@@ -197,7 +198,7 @@ func (rf *Raft) runForElection() {
 		if peerNum == rf.me {
 			rf.lock()
 			rf.VotedFor = rf.me
-			debug(rf, TRACE, "voting for itself")
+			ad.DebugObj(rf, ad.TRACE, "voting for itself")
 			rf.writePersist()
 			rf.unlock()
 		} else {
@@ -216,7 +217,7 @@ func (rf *Raft) runForElection() {
 		rf.lock()
 		assert(rf.CurrentElectionState != Leader)
 		if rf.CurrentTerm != electionTerm {
-			debug(rf, TRACE, "advanced to term %d while counting results of election for term %d. "+
+			ad.DebugObj(rf, ad.TRACE, "advanced to term %d while counting results of election for term %d. "+
 				"Abandoning election.")
 			rf.unlock()
 			return
@@ -228,10 +229,10 @@ func (rf *Raft) runForElection() {
 			noVotes++
 		}
 
-		debug(rf, TRACE, "Got %+v from server %d, yes votes now at %d out of a required %d",
+		ad.DebugObj(rf, ad.TRACE, "Got %+v from server %d, yes votes now at %d out of a required %d",
 			reply, reply.VoterId, yesVotes, requiredToWin)
 		if yesVotes >= requiredToWin {
-			debug(rf, RPC, "Won election!")
+			ad.DebugObj(rf, ad.RPC, "Won election!")
 			// non-blocking send
 			// send the term number to prevent a bug where the raft advances to a new term before it notices it's
 			// become a leader, so it becomes a second false leader.
@@ -239,7 +240,7 @@ func (rf *Raft) runForElection() {
 			rf.unlock()
 			return
 		} else if noVotes >= requiredToWin {
-			debug(rf, RPC, "Got %d no votes, can't win election. Reverting to follower", noVotes)
+			ad.DebugObj(rf, ad.RPC, "Got %d no votes, can't win election. Reverting to follower", noVotes)
 			rf.CurrentElectionState = Follower
 			rf.writePersist()
 			rf.unlock()
@@ -282,10 +283,11 @@ func Make(peers []*labrpc.ClientEnd, me int, persister *Persister, applyCh chan 
 
 	// store the state in case we crash immediately
 	rf.writePersist()
-	rf.unlock()
 
 	go rf.ElectionThread()
 	go rf.HeartbeatThread()
 	go rf.ApplierThread()
+
+	rf.unlock()
 	return rf
 }

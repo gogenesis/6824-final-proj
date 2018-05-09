@@ -4,12 +4,12 @@
 // The compiler requires that it be in a folder named main, but
 // we don't want to store it in a folder named main, so we tell the compiler to ignore this file
 // when building with this second magic comment.
-// +build ignore
 //
 
 package main
 
 import (
+	"filesystem"
 	"fmt"
 	"fsraft"
 	"os"
@@ -34,16 +34,16 @@ func main() {
 	memoryFSTestGenParams := genFileParameters{
 		fileName:                "memoryFS_test.go",
 		pkg:                     "memoryFS",
-		imports:                 []string{"testing", "fsraft"},
+		imports:                 []string{"filesystem", "testing"},
 		headerComment:           "// This file contains a unit test for every functionality test (found in filesystem_tests.go).",
 		fileSystemName:          "MemoryFS",
 		testNamesToMethodBodies: make(map[string]string, 0),
 	}
 
-	for _, functionality := range fsraft.FunctionalityTests {
+	for _, functionality := range filesystem.FunctionalityTests {
 		functionalityName := GetFunctionName(functionality)
 		testName := fmt.Sprintf("%v", functionalityName)
-		methodBody := fmt.Sprintf("mfs := CreateEmptyMemoryFS()\n        fsraft.%v(t, &mfs)", functionalityName)
+		methodBody := fmt.Sprintf("mfs := CreateEmptyMemoryFS()\n        filesystem.%v(t, &mfs)", functionalityName)
 		memoryFSTestGenParams.testNamesToMethodBodies[testName] = methodBody
 	}
 
@@ -53,20 +53,20 @@ func main() {
 	combinationTestGenParams := genFileParameters{
 		fileName: "combination_test.go",
 		pkg:      "fsraft",
-		imports:  []string{"testing"},
+		imports:  []string{"filesystem", "testing"},
 		headerComment: `// This file contains a unit test for every combination of functionality test
-// (found in filesystem_tests.go) and difficulty (found in test_setup.go).`,
+// (found in filesystem_tests.go) and difficulty (found in difficulties.go).`,
 		fileSystemName:          "Clerk",
 		testNamesToMethodBodies: make(map[string]string, 0),
 	}
 
-	for _, functionality := range fsraft.FunctionalityTests {
-		functionalityName := GetFunctionName(functionality)
-		for _, difficulty := range fsraft.Difficulties {
-			difficultyName := GetFunctionName(difficulty)
+	for _, difficulty := range fsraft.Difficulties {
+		difficultyName := GetFunctionName(difficulty)
+		for _, functionality := range filesystem.FunctionalityTests {
+			functionalityName := GetFunctionName(functionality)
 
-			testName := fmt.Sprintf("%v_%v", functionalityName, difficultyName)
-			methodBody := fmt.Sprintf("runFunctionalityTestWithDifficulty(t, %v, %v)", functionalityName, difficultyName)
+			testName := fmt.Sprintf("%v_%v", difficultyName, functionalityName)
+			methodBody := fmt.Sprintf("runFunctionalityTestWithDifficulty(t, filesystem.%v, %v)", functionalityName, difficultyName)
 			combinationTestGenParams.testNamesToMethodBodies[testName] = methodBody
 		}
 	}

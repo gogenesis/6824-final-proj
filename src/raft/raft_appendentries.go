@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"ad"
 	"fmt"
 	"time"
 )
@@ -34,12 +35,12 @@ func (rf *Raft) sendAppendEntries(peerNum int, includeEntries bool) {
 		return
 	}
 	if !rf.isAlive {
-		debug(rf, TRACE, "Skipping AppendEntries to %d because I am dead", peerNum, rf.me)
+		ad.DebugObj(rf, ad.TRACE, "Skipping AppendEntries to %d because I am dead", peerNum, rf.me)
 		rf.unlock()
 		return
 	}
 	if rf.CurrentElectionState != Leader {
-		debug(rf, TRACE, "Server %d would send out a heartbeat to %d even though %d is not the leader! Instead, skipping heartbeat",
+		ad.DebugObj(rf, ad.TRACE, "Server %d would send out a heartbeat to %d even though %d is not the leader! Instead, skipping heartbeat",
 			rf.me, peerNum, rf.me)
 		rf.unlock()
 		return
@@ -52,7 +53,7 @@ func (rf *Raft) sendAppendEntries(peerNum int, includeEntries bool) {
 	args.PrevLogIndex = max(rf.nextIndex[peerNum]-1, 0)
 	if args.PrevLogIndex < rf.lastIndexInSnapshot() {
 		// send an InstallSnapshot instead
-		debug(rf, TRACE, "Would send an AppendEntries to %d with PrevLogIndex=%d, but already snapshotted "+
+		ad.DebugObj(rf, ad.TRACE, "Would send an AppendEntries to %d with PrevLogIndex=%d, but already snapshotted "+
 			"indices <= %d, sending InstallSnapshot instead", peerNum, args.PrevLogIndex, rf.lastIndexInSnapshot())
 		go rf.sendInstallSnapshot(peerNum)
 		rf.unlock()
@@ -80,7 +81,7 @@ func (rf *Raft) sendAppendEntries(peerNum int, includeEntries bool) {
 
 	sendTime := time.Now().Format("03:04:05.000")
 	rfLastLogIndexBeforeSendingRPC := rf.lastLogIndex()
-	debug(rf, RPC, "Sending AppendEntries with %d entries to %v", len(args.Entries), peerNum)
+	ad.DebugObj(rf, ad.RPC, "Sending AppendEntries with %d entries to %v", len(args.Entries), peerNum)
 	rf.unlock()
 
 	ok := rf.peers[peerNum].Call("Raft.AppendEntries", args, reply)
@@ -95,47 +96,47 @@ func (rf *Raft) sendAppendEntries(peerNum int, includeEntries bool) {
 		return
 	}
 	if !(rf.CurrentElectionState == Leader) {
-		debug(rf, TRACE, "Ignoring AppendEntries reply from %d that I sent in term %d because I am no longer the leader",
+		ad.DebugObj(rf, ad.TRACE, "Ignoring AppendEntries reply from %d that I sent in term %d because I am no longer the leader",
 			peerNum, args.Term)
 		return
 	}
 	if rf.CurrentTerm > reply.Term {
-		debug(rf, TRACE, "Ignoring AppendEntries reply from %d (term %d) because I am in greater term %d",
+		ad.DebugObj(rf, ad.TRACE, "Ignoring AppendEntries reply from %d (term %d) because I am in greater term %d",
 			peerNum, reply.Term, rf.CurrentTerm)
 		return
 	}
 
-	debug(rf, TRACE, "received %+v, ok=%t from AppendEntries to %d sent in term %d at %v",
+	ad.DebugObj(rf, ad.TRACE, "received %+v, ok=%t from AppendEntries to %d sent in term %d at %v",
 		reply, ok, peerNum, args.Term, sendTime)
 	if ok && reply.Success {
 		rf.nextIndex[peerNum] = rfLastLogIndexBeforeSendingRPC + 1
 		rf.matchIndex[peerNum] = rfLastLogIndexBeforeSendingRPC
-		debug(rf, TRACE, "reply success, nextIndex=%+v, matchIndex=%+v", rf.nextIndex, rf.matchIndex)
+		ad.DebugObj(rf, ad.TRACE, "reply success, nextIndex=%+v, matchIndex=%+v", rf.nextIndex, rf.matchIndex)
 
 		// If there exists an N such that N > commitIndex, a majority of matchIndex[i] ≥ N, and
 		// Log[N].term == CurrentTerm: set commitIndex = N (§5.3, §5.4).
 		for n := rf.commitIndex + 1; n <= rf.lastLogIndex(); n++ {
 			// if a majority of matchIndex[i] >= N and Log[N].term == CurrentTerm
-			debug(rf, TRACE, "Considering updating rf.commitIndex from %d to %d...", rf.commitIndex, n)
+			ad.DebugObj(rf, ad.TRACE, "Considering updating rf.commitIndex from %d to %d...", rf.commitIndex, n)
 			if rf.Log.get(n).Term == rf.CurrentTerm {
 				numMatchIndexAtLeastN := 0
-				debug(rf, TRACE, "matchIndex=%+v", rf.matchIndex)
+				ad.DebugObj(rf, ad.TRACE, "matchIndex=%+v", rf.matchIndex)
 				for peerNum, _ := range rf.peers {
 					if rf.matchIndex[peerNum] >= n {
 						numMatchIndexAtLeastN++
 					}
 				}
 				if numMatchIndexAtLeastN >= rf.majoritySize() {
-					debug(rf, TRACE, "%d peers matchIndex %d, increasing commitIndex from %d to %d",
+					ad.DebugObj(rf, ad.TRACE, "%d peers matchIndex %d, increasing commitIndex from %d to %d",
 						numMatchIndexAtLeastN, n, rf.commitIndex, n)
 					rf.commitIndex = n
 					go func() { rf.toApply <- true }()
 				} else {
-					debug(rf, TRACE, "only %d peers match up to index %d, can't commit", numMatchIndexAtLeastN, n)
+					ad.DebugObj(rf, ad.TRACE, "only %d peers match up to index %d, can't commit", numMatchIndexAtLeastN, n)
 					break
 				}
 			} else {
-				debug(rf, TRACE, "not choosing because Log[%d] has wrong term %d (instead of %d)",
+				ad.DebugObj(rf, ad.TRACE, "not choosing because Log[%d] has wrong term %d (instead of %d)",
 					n, rf.Log.get(n).Term, rf.CurrentTerm)
 			}
 		}
@@ -145,7 +146,7 @@ func (rf *Raft) sendAppendEntries(peerNum int, includeEntries bool) {
 			assert(reply.DesiredNextIndex > 0)
 			// it could be equal to logLength + 1 if they already have all our entries in a snapshot
 			assert(reply.DesiredNextIndex <= rf.Log.length()+1)
-			debug(rf, TRACE, "At follower's request, setting nextIndex=%d", reply.DesiredNextIndex)
+			ad.DebugObj(rf, ad.TRACE, "At follower's request, setting nextIndex=%d", reply.DesiredNextIndex)
 			rf.nextIndex[peerNum] = reply.DesiredNextIndex
 		} else {
 			// we need to figure out what to send for ourselves
@@ -161,17 +162,17 @@ func (rf *Raft) sendAppendEntries(peerNum int, includeEntries bool) {
 
 			if leaderHasEntriesWithConflictingTerm {
 				rf.nextIndex[peerNum] = leaderLastIndexWithConflictingTerm
-				debug(rf, TRACE, "leader has Entries with conflicting term %d, setting nextIndex[%d] to %d",
+				ad.DebugObj(rf, ad.TRACE, "leader has Entries with conflicting term %d, setting nextIndex[%d] to %d",
 					reply.ConflictingTerm, peerNum, rf.nextIndex[peerNum])
 			} else {
 				rf.nextIndex[peerNum] = reply.FirstIndexOfConflictingTerm
-				debug(rf, TRACE, "leader does not have Entries with conflicting term %d, setting nextIndex[%d] to %d",
+				ad.DebugObj(rf, ad.TRACE, "leader does not have Entries with conflicting term %d, setting nextIndex[%d] to %d",
 					reply.ConflictingTerm, peerNum, rf.nextIndex[peerNum])
 			}
 
 			rf.nextIndex[peerNum] = max(1, rf.nextIndex[peerNum]) // just in case
 		}
-		debug(rf, TRACE, "AppendEntries to %d failed, setting nextIndex[%d] to %d and trying again.", peerNum, peerNum, rf.nextIndex[peerNum])
+		ad.DebugObj(rf, ad.TRACE, "AppendEntries to %d failed, setting nextIndex[%d] to %d and trying again.", peerNum, peerNum, rf.nextIndex[peerNum])
 		go rf.sendAppendEntries(peerNum, includeEntries)
 	}
 }
@@ -182,12 +183,12 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	defer rf.unlock()
 
 	if !rf.isAlive {
-		debug(rf, TRACE, "Ignoring AppendEntries from %d because I am dead", args.LeaderID)
+		ad.DebugObj(rf, ad.TRACE, "Ignoring AppendEntries from %d because I am dead", args.LeaderID)
 		return
 	}
 
 	debugStr := fmt.Sprintf("AppendEntries from %d", args.LeaderID)
-	debug(rf, RPC, "received %v%+v", debugStr, args)
+	ad.DebugObj(rf, ad.RPC, "received %v%+v", debugStr, args)
 
 	rf.updateTermIfNecessary(args.Term)
 	reply.Term = rf.CurrentTerm
@@ -240,7 +241,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		reply.FirstIndexOfConflictingTerm = -1
 
 		assert(args.PrevLogIndex >= -1)
-		debug(rf, TRACE, "log=%+v", rf.Log)
+		ad.DebugObj(rf, ad.TRACE, "log=%+v", rf.Log)
 		for newEntriesIndex, newEntry := range args.Entries {
 			indexInLog := args.PrevLogIndex + newEntriesIndex + 1
 			assertEquals(indexInLog, newEntry.Index)
@@ -248,21 +249,21 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 				// This is safe because if indexInLog was already compressed, the RPC would have been rejected above.
 				entry := rf.Log.get(indexInLog)
 				if (entry.Index == newEntry.Index) && (entry.Term != newEntry.Term) {
-					debug(rf, RPC, "found conflicting entry %+v, differs from new entry %+v, deleting it and all later Entries (%d)",
+					ad.DebugObj(rf, ad.RPC, "found conflicting entry %+v, differs from new entry %+v, deleting it and all later Entries (%d)",
 						entry, newEntry, len(rf.Log.getIndicesIncludingAndAfter(entry.Index)))
 
 					// Log optimization
 					reply.ConflictingTerm = entry.Term
 					i := args.PrevLogIndex
 					for (i > 0) && (rf.Log.indexIsUncompressed(i)) && (rf.Log.get(i).Term == reply.ConflictingTerm) {
-						debug(rf, TRACE, "Log.get(%d)=%+v, in conflicting term %d", i, rf.Log.get(i), reply.ConflictingTerm)
+						ad.DebugObj(rf, ad.TRACE, "Log.get(%d)=%+v, in conflicting term %d", i, rf.Log.get(i), reply.ConflictingTerm)
 						i--
 					}
 					reply.FirstIndexOfConflictingTerm = i
 
 					rf.Log.truncateAfter(entry.Index - 1)
-					debug(rf, TRACE, "log=%+v", rf.Log)
-					debug(rf, TRACE, "ConflictingTerm=%d and firstIndexOfConflictingTerm=%d",
+					ad.DebugObj(rf, ad.TRACE, "log=%+v", rf.Log)
+					ad.DebugObj(rf, ad.TRACE, "ConflictingTerm=%d and firstIndexOfConflictingTerm=%d",
 						reply.ConflictingTerm, reply.FirstIndexOfConflictingTerm)
 
 					rf.writePersist()
@@ -271,7 +272,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			} // end if
 		} // end for
 	} else {
-		debug(rf, RPC, "Rejecting AppendEntries because %v", reason)
+		ad.DebugObj(rf, ad.RPC, "Rejecting AppendEntries because %v", reason)
 		return
 	}
 
@@ -279,35 +280,35 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	// only append Entries that are not already in the log
 	if len(args.Entries) > 0 {
 		var toAppend []LogEntry
-		debug(rf, TRACE, "Beginning to add %+v to my Log", args.Entries)
+		ad.DebugObj(rf, ad.TRACE, "Beginning to add %+v to my Log", args.Entries)
 		for _, entryFromLeader := range args.Entries {
 			entryAlreadyInLog := false
 			// We know that these can't be compressed entries; if they were, then args.PrevLogIndex would be
 			// < rf.lastIndexInSnapshot() and the RPC would have been rejected.
 			for _, uncompressedEntryInLog := range rf.Log.UncompressedEntries {
 				if entryFromLeader == uncompressedEntryInLog {
-					debug(rf, TRACE, "%+v is already in the log (uncompressed)", entryFromLeader)
+					ad.DebugObj(rf, ad.TRACE, "%+v is already in the log (uncompressed)", entryFromLeader)
 					entryAlreadyInLog = true
 				}
 			}
 			if !entryAlreadyInLog {
 				toAppend = append(toAppend, entryFromLeader)
-				debug(rf, TRACE, "appending %+v", entryFromLeader)
+				ad.DebugObj(rf, ad.TRACE, "appending %+v", entryFromLeader)
 			} else {
-				debug(rf, TRACE, "not appending %+v because i already had it", entryFromLeader)
+				ad.DebugObj(rf, ad.TRACE, "not appending %+v because i already had it", entryFromLeader)
 			}
 		}
 		rf.Log.appendAll(toAppend)
 		rf.writePersist()
-		debug(rf, TRACE, "done appending, Log=%+v", rf.Log)
+		ad.DebugObj(rf, ad.TRACE, "done appending, Log=%+v", rf.Log)
 	} else {
-		debug(rf, TRACE, "No Log Entries in AppendEntries")
+		ad.DebugObj(rf, ad.TRACE, "No Log Entries in AppendEntries")
 	}
 
 	// step 5
 	if args.LeaderCommit > rf.commitIndex {
 		newCommitIndex := min(args.LeaderCommit, rf.lastLogIndex())
-		debug(rf, TRACE, "Updating commitIndex from %d to %d", rf.commitIndex, newCommitIndex)
+		ad.DebugObj(rf, ad.TRACE, "Updating commitIndex from %d to %d", rf.commitIndex, newCommitIndex)
 		assert(newCommitIndex >= rf.commitIndex) // make sure commitIndex only increases
 		rf.commitIndex = newCommitIndex
 		if rf.commitIndex > rf.lastApplied {
@@ -317,6 +318,6 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 	rf.resetElectionTimeout()
 
-	debug(rf, RPC, "done processing %v, postponing running election until %v",
+	ad.DebugObj(rf, ad.RPC, "done processing %v, postponing running election until %v",
 		debugStr, rf.candidateDeclareTime.Format("05.000"))
 }

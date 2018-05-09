@@ -16,37 +16,68 @@ run_test () {
    fi
 }
 
+generate_tests () {
+   go generate
+}
+
 main () {
    pushd `pwd` > /dev/null
+   cd $SCRIPT_DIR/../main 
+   go generate
+   if [ $? != 0 ]; then
+      echo "FAIL: test generation... continuing to run all tests"
+   else
+      echo "Tests generated successfully!"
+   fi
    cd $SCRIPT_DIR
    # As tests begin passing, to keep them included in future test runs,
    # they should be added here.
-   run_test "MemoryFS_TestBasicOpenClose"
-   run_test "MemoryFS_TestDeleteNotFound"
-   run_test "MemoryFS_TestCloseClosed"
-   run_test "MemoryFS_TestOpenOpened"
-   run_test "MemoryFS_TestOpenNotFound"
-   run_test "MemoryFS_TestOpenAlreadyExists"
-   run_test "MemoryFS_TestOpenROClose"
-   run_test "MemoryFS_TestOpenROClose"
-   run_test "MemoryFS_TestOpenROClose4"
-   run_test "MemoryFS_TestOpenROClose64"
-   run_test "MemoryFS_TestOpenRWClose"
-   run_test "MemoryFS_TestOpenRWClose4"
-   run_test "MemoryFS_TestOpenRWClose64"
-   run_test "MemoryFS_TestOpenCloseLeastFD"
-   run_test "MemoryFS_TestOpenCloseDeleteRoot"
-   run_test "MemoryFS_TestOpenCloseDeleteMaxFD"
-   run_test "MemoryFS_TestOpenCloseDeleteRootMax"
-   run_test "MemoryFS_TestSeekErrorBadFD"
-   run_test "MemoryFS_TestSeekErrorBadOffsetOperation"
-   run_test "MemoryFS_TestWriteClosedFile"
-   run_test "MemoryFS_TestWrite1Byte"
-   run_test "MemoryFS_TestWrite1KByte"
-   run_test "MemoryFS_TestWrite1MByte"
-   run_test "MemoryFS_TestWrite10MByte"
-   run_test "MemoryFS_TestWrite100MByte"
-   run_test "MemoryFS_TestReadClosedFile"
+	  run_test "TestMemoryFS_TestBasicOpenClose"
+	  run_test "TestMemoryFS_TestDeleteNotFound"
+	  run_test "TestMemoryFS_TestCloseClosed"
+	  run_test "TestMemoryFS_TestOpenOpened"
+	  run_test "TestMemoryFS_TestOpenNotFound"
+	  run_test "TestMemoryFS_TestOpenAlreadyExists"
+	  run_test "TestMemoryFS_TestOpenROClose"
+	  run_test "TestMemoryFS_TestOpenROClose"
+	  run_test "TestMemoryFS_TestOpenROClose4"
+	  run_test "TestMemoryFS_TestOpenROClose64"
+	  run_test "TestMemoryFS_TestOpenRWClose"
+	  run_test "TestMemoryFS_TestOpenRWClose4"
+	  run_test "TestMemoryFS_TestOpenRWClose64"
+	  run_test "TestMemoryFS_TestOpenCloseLeastFD"
+	  run_test "TestMemoryFS_TestOpenCloseDeleteMaxFD"
+	  run_test "TestMemoryFS_TestOpenCloseDeleteRoot"
+	  run_test "TestMemoryFS_TestOpenCloseDeleteRootMax"
+	  run_test "TestMemoryFS_TestSeekErrorBadFD"
+	  run_test "TestMemoryFS_TestSeekErrorBadOffsetOperation"
+	  run_test "TestMemoryFS_TestSeekOffEOF"
+	  run_test "TestMemoryFS_TestWriteClosedFile"
+	  run_test "TestMemoryFS_TestWriteReadBasic"
+	  run_test "TestMemoryFS_TestWriteReadBasic4"
+	  run_test "TestMemoryFS_TestWrite1Byte"
+	  run_test "TestMemoryFS_TestWrite8Bytes"
+	  run_test "TestMemoryFS_TestWrite1KBytes"
+	  run_test "TestMemoryFS_TestWrite1MBytes"
+	  run_test "TestMemoryFS_TestWrite10MBytes"
+	  run_test "TestMemoryFS_TestWrite100MBytes"
+	  run_test "TestMemoryFS_TestReadClosedFile"
+	  run_test "TestMemoryFS_TestWriteRead1ByteSimple"
+	  run_test "TestMemoryFS_TestWriteRead8BytesSimple"
+	  run_test "TestMemoryFS_TestWriteRead8BytesIter8"
+	  run_test "TestMemoryFS_TestWriteRead8BytesIter64"
+	  run_test "TestMemoryFS_TestWriteRead64BytesIter64K"
+	  run_test "TestMemoryFS_TestWriteRead64KBIter1MB"
+	  run_test "TestMemoryFS_TestWriteRead64KBIter10MB"
+	  run_test "TestMemoryFS_TestWriteRead1MBIter100MB"
+
+	  # ======= the line in the sand ======
+
+	  #@dir
+	  #run_test "TestMemoryFS_TestMkdir"
+	  #run_test "TestMemoryFS_TestMkdirTree"
+	  #run_test "TestMemoryFS_TestOpenCloseDeleteAcrossDirectories"
+# generated Tue May  8 20:40:51 EDT 2018 by $ main/generate_run_tests.sh MemoryFS
    echo ""
    popd > /dev/null
 }

@@ -1,7 +1,8 @@
 package memoryFS
 
 import (
-	"fsraft"
+	"ad"
+	"filesystem"
 )
 
 // A file (not a directory) in a filesystem.
@@ -12,7 +13,7 @@ import (
 type File struct {
 	inode    Inode
 	isOpen   bool
-	openMode fsraft.OpenMode
+	openMode filesystem.OpenMode
 	contents []byte
 	offset   int // Invariant: offset >= 0
 }
@@ -25,17 +26,17 @@ func (file *File) Name() string {
 }
 
 // See FileSystem::Open.
-func (file *File) Open(mode fsraft.OpenMode, flags fsraft.OpenFlags) (err error) {
+func (file *File) Open(mode filesystem.OpenMode, flags filesystem.OpenFlags) (err error) {
 	if file.isOpen {
-		return fsraft.AlreadyOpen
+		return filesystem.AlreadyOpen
 	}
 	file.isOpen = true
 	file.openMode = mode
-	if fsraft.FlagIsSet(flags, fsraft.Truncate) {
+	if filesystem.FlagIsSet(flags, filesystem.Truncate) {
 		file.contents = make([]byte, 0)
 		file.offset = 0
 	}
-	if fsraft.FlagIsSet(flags, fsraft.Append) {
+	if filesystem.FlagIsSet(flags, filesystem.Append) {
 		file.offset = len(file.contents)
 	}
 	return nil
@@ -51,7 +52,7 @@ func (file *File) Close() (success bool, err error) {
 }
 
 // See FileSystem::Seek.
-func (file *File) Seek(offset int, base fsraft.SeekMode) (newPosition int, err error) {
+func (file *File) Seek(offset int, base filesystem.SeekMode) (newPosition int, err error) {
 	// currently supporting FromBeginning
 	file.offset = offset
 	return file.offset, nil
@@ -61,60 +62,41 @@ func (file *File) Seek(offset int, base fsraft.SeekMode) (newPosition int, err e
 func (file *File) Read(numBytes int) (bytesRead int, data []byte, err error) {
 	readBytes := make([]byte, numBytes)
 	if numBytes < 0 {
-		return -1, make([]byte, 0), fsraft.IllegalArgument
+		return -1, make([]byte, 0), filesystem.IllegalArgument
 	}
-	//  DEBUG CODE stashed ... please remind me how we do leveled logs
-	print("offset")
-	print(file.offset)
-	print("\n")
-	print("numBytes")
-	print(numBytes)
-	print("\n")
-	print("lenfile")
-	print(len(file.contents))
-	print("\n")
-	//TODO if directory, return IsDirectory
-	if file.offset+bytesRead > len(file.contents) { //if offset goes past end of file
+
+	//TODO @dir if directory {
+	//    return -1, IsDirectory
+	// }
+
+	if file.offset+numBytes > len(file.contents) { //if offset goes past end of file
 		return 0, make([]byte, 0), nil //no bytes are read
 	}
+	ad.AssertExplain(file.offset+numBytes <= len(file.contents),
+		"reading past end of data")
 	copy(readBytes, file.contents[file.offset:file.offset+numBytes])
 	file.offset += numBytes
-	print("offset now")
-	print(file.offset)
-	print("\n")
+	ad.Debug(ad.RPC, "offset now %d", file.offset)
 	return numBytes, readBytes, nil
 }
 
 // See FileSystem::Write.
 func (file *File) Write(numBytes int, data []byte) (bytesWritten int, err error) {
-	// when we have assert, assert numBytes == len(data) to catch tester bugs
+	ad.AssertExplain(numBytes == len(data), "bad numBytes %d vs len(data) %d",
+		numBytes, len(data))
 	// grow file as needed, leaving holes >EOF written
 	if file.offset+numBytes > len(file.contents) {
-		// DEBUG CODE stashed ... please remind me how we do leveled logs
-		print("offset")
-		print(file.offset)
-		print("\n")
-		print("numBytes")
-		print(numBytes)
-		print("\n")
-		print("lenfile")
-		print(len(file.contents))
-		print("\nGROWING\n")
+		ad.Debug(ad.RPC, "growing file - offset %d numBytes %d len(contents) %d",
+			file.offset, numBytes, len(file.contents))
 		realloc := make([]byte, file.offset+numBytes)
 		copy(realloc[0:len(file.contents)], file.contents)
-		file.contents = realloc //garbage collect old contents but need to confirm
-		// DEBUG CODE
-		print("lenfile now")
-		print(len(file.contents))
-		print("\n")
+		file.contents = realloc //hopefully garbage collect old contents, needs confirm
 	}
 	copy(file.contents[file.offset:file.offset+numBytes], data)
 	// we currently assume all bytes are written correctly
 	// more strict checks would check datastore space first and write up to limit
 	file.offset += numBytes
-	print("offset now")
-	print(file.offset)
-	print("\n")
+	ad.Debug(ad.RPC, "done, seek offset %d, file now %d bytes", file.offset, len(file.contents))
 	return numBytes, nil
 }
 

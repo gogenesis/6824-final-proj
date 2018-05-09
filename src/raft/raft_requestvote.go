@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"ad"
 	"fmt"
 )
 
@@ -26,7 +27,7 @@ func (rf *Raft) sendRequestVote(peerNum int, repliesChan chan *RequestVoteReply)
 	assert(rf.me != peerNum) // voting for self is handled separately
 
 	if !rf.isAlive {
-		debug(rf, TRACE, "Skipping requestVote to %d because I am dead", rf.me)
+		ad.DebugObj(rf, ad.TRACE, "Skipping requestVote to %d because I am dead", rf.me)
 		rf.unlock()
 		return
 	}
@@ -37,7 +38,7 @@ func (rf *Raft) sendRequestVote(peerNum int, repliesChan chan *RequestVoteReply)
 	args.LastLogIndex = rf.lastLogIndex()
 	args.LastLogTerm = rf.Log.lastTerm()
 	reply := &RequestVoteReply{}
-	debug(rf, RPC, "sending RequestVote to server %v", peerNum)
+	ad.DebugObj(rf, ad.RPC, "sending RequestVote to server %v", peerNum)
 	rf.unlock()
 
 	ok := rf.peers[peerNum].Call("Raft.RequestVote", args, reply)
@@ -47,13 +48,13 @@ func (rf *Raft) sendRequestVote(peerNum int, repliesChan chan *RequestVoteReply)
 
 	rf.updateTermIfNecessary(reply.Term)
 	if rf.CurrentElectionState != Candidate || rf.CurrentTerm != args.Term {
-		debug(rf, TRACE, "Election for term %d is over, abandoning response from server %v", args.Term, peerNum)
+		ad.DebugObj(rf, ad.TRACE, "Election for term %d is over, abandoning response from server %v", args.Term, peerNum)
 	} else if ok {
 		// It's okay that unlocking comes after the channel push because the channel is guaranteed to never block
 		// (because it has space for a reply from every peer)
 		repliesChan <- reply
 	} else {
-		debug(rf, RPC, "RequestVote from server %v did not succeed!", peerNum)
+		ad.DebugObj(rf, ad.RPC, "RequestVote from server %v did not succeed!", peerNum)
 	}
 }
 
@@ -64,11 +65,11 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	defer rf.unlock()
 
 	if !rf.isAlive {
-		debug(rf, TRACE, "Ignoring RequestVote from %d because I am dead", args.CandidateId)
+		ad.DebugObj(rf, ad.TRACE, "Ignoring RequestVote from %d because I am dead", args.CandidateId)
 		return
 	}
 
-	debug(rf, RPC, "Received RequestVote from %v in term %d", args.CandidateId, args.Term)
+	ad.DebugObj(rf, ad.RPC, "Received RequestVote from %v in term %d", args.CandidateId, args.Term)
 
 	reply.Term = rf.CurrentTerm
 	reply.VoterId = rf.me
@@ -107,10 +108,10 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	if reply.VoteGranted {
 		rf.VotedFor = args.CandidateId
 		rf.resetElectionTimeout()
-		debug(rf, RPC, "voting for %v and returning from RequestVote RPC", args.CandidateId)
+		ad.DebugObj(rf, ad.RPC, "voting for %v and returning from RequestVote RPC", args.CandidateId)
 		rf.writePersist()
 	} else {
-		debug(rf, RPC, "not voting for %v in term %v because %v", args.CandidateId, args.Term, reason)
+		ad.DebugObj(rf, ad.RPC, "not voting for %v in term %v because %v", args.CandidateId, args.Term, reason)
 	}
 
 }

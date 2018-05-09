@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"ad"
 	"fmt"
 )
 
@@ -33,13 +34,13 @@ func (rf *Raft) sendInstallSnapshot(peerNum int) {
 	reply := InstallSnapshotReply{}
 
 	//if rf.matchIndex[peerNum] >= rf.lastIndexInSnapshot() {
-	//	debug(rf, TRACE, "Would send InstallSnapshot to %d, LastIncludedIndex=%d, but they already match indices through %d, "+
+	//	ad.DebugObj(rf, ad.TRACE, "Would send InstallSnapshot to %d, LastIncludedIndex=%d, but they already match indices through %d, "+
 	//		"so there's no point.", peerNum, args.LastIncludedIndex, rf.matchIndex[peerNum])
 	//	rf.unlock()
 	//	return
 	//}
 
-	debug(rf, RPC, "Sending InstallSnapshot to %d, LastIncludedIndex = %d", peerNum, args.LastIncludedIndex)
+	ad.DebugObj(rf, ad.RPC, "Sending InstallSnapshot to %d, LastIncludedIndex = %d", peerNum, args.LastIncludedIndex)
 	rf.unlock()
 
 	ok := rf.peers[peerNum].Call("Raft.InstallSnapshot", &args, &reply)
@@ -52,11 +53,11 @@ func (rf *Raft) sendInstallSnapshot(peerNum int) {
 	}
 	if ok {
 		rf.updateTermIfNecessary(reply.Term)
-		debug(rf, TRACE, "Received successful response to InstallSnapshot sent to %d with LastIncludedIndex=%d", peerNum, args.LastIncludedIndex)
+		ad.DebugObj(rf, ad.TRACE, "Received successful response to InstallSnapshot sent to %d with LastIncludedIndex=%d", peerNum, args.LastIncludedIndex)
 		rf.matchIndex[peerNum] = args.LastIncludedIndex
 		rf.nextIndex[peerNum] = args.LastIncludedIndex + 1
 	} else {
-		debug(rf, TRACE, "Received failed response to InstallSnapshot sent to %d with LastIncludedIndex=%d", peerNum, args.LastIncludedIndex)
+		ad.DebugObj(rf, ad.TRACE, "Received failed response to InstallSnapshot sent to %d with LastIncludedIndex=%d", peerNum, args.LastIncludedIndex)
 	}
 }
 
@@ -71,7 +72,7 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 	}
 
 	debugStr := fmt.Sprintf("InstallSnapshot from %d, LastIncludedIndex=%d", args.LeaderId, args.LastIncludedIndex)
-	debug(rf, RPC, "Received %v", debugStr)
+	ad.DebugObj(rf, ad.RPC, "Received %v", debugStr)
 	rf.updateTermIfNecessary(args.Term)
 	rf.resetElectionTimeout()
 	if args.Term == rf.CurrentTerm && rf.CurrentElectionState == Leader {
@@ -90,10 +91,10 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 
 	//5. Save snapshot file, discard any existing or partial snapshot with a smaller index
 	//if args.LastIncludedIndex <= rf.lastIndexInSnapshot() {
-	//	debug(rf, RPC, "Ignoring %v because my own snapshot already includes indices up to %d", debugStr, rf.lastIndexInSnapshot())
+	//	ad.DebugObj(rf, ad.RPC, "Ignoring %v because my own snapshot already includes indices up to %d", debugStr, rf.lastIndexInSnapshot())
 	//	return
 	//}
-	//debug(rf, TRACE, "Applying Snapshot from %d, LastIncludedIndex=%d", args.LeaderId, args.LastIncludedIndex)
+	//ad.DebugObj(rf, ad.TRACE, "Applying Snapshot from %d, LastIncludedIndex=%d", args.LeaderId, args.LastIncludedIndex)
 	//rf.lastApplied = max(rf.lastApplied, args.LastIncludedIndex)
 	//rf.commitIndex = max(rf.lastApplied, args.LastIncludedIndex)
 	//rf.snapshotWithLock(snapshotInProgress, args.LastIncludedIndex)
@@ -104,7 +105,7 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 	//	assertEquals(args.LastIncludedIndex, rf.Log.lastCompressedIndex())
 	//	// Since we have entries after LastIncludedIndex, those should still be uncompressed
 	//	assert(len(rf.Log.UncompressedEntries) > 0)
-	//	debug(rf, TRACE, "Finished InstallSnapshot from %d, LastIncludedIndex=d, not changing state machine state "+
+	//	ad.DebugObj(rf, ad.TRACE, "Finished InstallSnapshot from %d, LastIncludedIndex=d, not changing state machine state "+
 	//		"because my log already contains those entries", args.LeaderId, args.LastIncludedIndex)
 	//	return
 	//}
@@ -116,7 +117,7 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 	switch {
 	case args.LastIncludedIndex <= rf.lastIndexInSnapshot():
 		// This is redundant with the snapshot we already have.
-		debug(rf, RPC, "Snapshot ends with already compressed entries, ignoring it because "+
+		ad.DebugObj(rf, ad.RPC, "Snapshot ends with already compressed entries, ignoring it because "+
 			"my own snapshot already includes indices up to %d", rf.lastIndexInSnapshot())
 		rf.unlock()
 		return
@@ -124,7 +125,7 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 	case rf.lastIndexInSnapshot() < args.LastIncludedIndex &&
 		args.LastIncludedIndex <= rf.lastApplied:
 		// This is a slightly newer snapshot, but we don't need to tell the state machine about it.
-		debug(rf, RPC, "Snapshot ends with applied but not compressed entries, updating stored snapshot with %v "+
+		ad.DebugObj(rf, ad.RPC, "Snapshot ends with applied but not compressed entries, updating stored snapshot with %v "+
 			"and changing nothing else", debugStr)
 		rf.snapshotWithLock(args.Data, args.LastIncludedIndex)
 		rf.unlock()
@@ -133,14 +134,14 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 	case rf.lastApplied < args.LastIncludedIndex &&
 		args.LastIncludedIndex <= rf.commitIndex:
 		// Update lastApplied so that the next command applied is the one that follows this snapshot.
-		debug(rf, CURRENT, "Snapshot ends with committed but not applied entries, Updating LastApplied to %d", args.LastIncludedIndex)
+		ad.DebugObj(rf, ad.TRACE, "Snapshot ends with committed but not applied entries, Updating LastApplied to %d", args.LastIncludedIndex)
 		rf.lastApplied = args.LastIncludedIndex
 		rf.snapshotWithLock(args.Data, args.LastIncludedIndex)
 
 	case rf.commitIndex < args.LastIncludedIndex &&
 		args.LastIncludedIndex < rf.lastLogIndex():
 		// This snapshot includes noncommitted entries.
-		debug(rf, CURRENT, "Snapshot ends with stored but not committed entries, updating lastApplied=commitIndex=%d",
+		ad.DebugObj(rf, ad.TRACE, "Snapshot ends with stored but not committed entries, updating lastApplied=commitIndex=%d",
 			args.LastIncludedIndex)
 		rf.lastApplied = args.LastIncludedIndex
 		rf.commitIndex = args.LastIncludedIndex
@@ -148,7 +149,7 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 
 	case rf.lastLogIndex() <= args.LastIncludedIndex:
 		// Discard the entire log because it is obselete at this point.
-		debug(rf, CURRENT, "Snapshot ends with entries after the end of my log, replacing entire log.")
+		ad.DebugObj(rf, ad.TRACE, "Snapshot ends with entries after the end of my log, replacing entire log.")
 		rf.lastApplied = args.LastIncludedIndex
 		rf.commitIndex = args.LastIncludedIndex
 		rf.snapshotWithLock(args.Data, args.LastIncludedIndex) // automatically handles compression and log replacement
@@ -156,7 +157,7 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 	}
 
 	// 8. Reset state machine using snapshot contents
-	debug(rf, RPC, "Finished InstallSnapshot from %d, LastIncludedIndex=%d, resetting state machine state", args.LeaderId,
+	ad.DebugObj(rf, ad.RPC, "Finished InstallSnapshot from %d, LastIncludedIndex=%d, resetting state machine state", args.LeaderId,
 		args.LastIncludedIndex)
 
 	rf.unlock()

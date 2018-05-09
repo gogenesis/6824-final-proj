@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"ad"
 	"fmt"
 	"math"
 	"math/rand"
@@ -9,14 +10,14 @@ import (
 )
 
 func init() {
-	// first things first
+	// first things first. This is in case you want the same seed for a later test.
 	seed := time.Now().UTC().UnixNano()
 	rand.Seed(seed)
 	fmt.Printf("seed=%v\n", seed)
 }
 
 // for debugging
-func (rf *Raft) debugPrefix() string {
+func (rf *Raft) DebugPrefix() string {
 	var electionState string
 	switch rf.CurrentElectionState {
 	case Leader:
@@ -33,7 +34,7 @@ func (rf *Raft) debugPrefix() string {
 // check representation invariants.
 // ONLY CALL WITH THE LOCK
 func (rf *Raft) assertInvariants() {
-	if CURRENT_DEBUG_LEVEL == NONE {
+	if !ad.AssertionsEnabled {
 		// for performance, don't check invariants
 		return
 	}
@@ -81,7 +82,7 @@ func (rf *Raft) updateTermIfNecessary(otherTerm int) {
 			go func() { rf.becomeFollower <- true }()
 		}
 		rf.CurrentElectionState = Follower
-		debug(rf, RPC, "Updating term to %d and becoming follower", rf.CurrentTerm)
+		ad.DebugObj(rf, ad.RPC, "Updating term to %d and becoming follower", rf.CurrentTerm)
 		rf.writePersist()
 	}
 }
