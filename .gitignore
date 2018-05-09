@@ -1,4 +1,4 @@
 *.swp
 # Generated files
-/src/fsraft/combination_test.go
-/src/memoryFS/memoryFS_test.go
+./src/fsraft/combination_test.go
+./src/memoryFS/memoryFS_test.go
