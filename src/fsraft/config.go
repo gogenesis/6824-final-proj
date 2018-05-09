@@ -106,7 +106,7 @@ func (cfg *config) SnapshotSize() int {
 // attach server i to servers listed in to
 // caller must hold cfg.mu
 func (cfg *config) connectUnlocked(i int, to []int) {
-	ad.Debug(ad.RPC, "connect peer %d to %v\n", i, to)
+	ad.Debug(ad.RPC, "connect peer %d to %v", i, to)
 
 	// outgoing socket files
 	for j := 0; j < len(to); j++ {
@@ -130,7 +130,7 @@ func (cfg *config) connect(i int, to []int) {
 // detach server i from the servers listed in from
 // caller must hold cfg.mu
 func (cfg *config) disconnectUnlocked(i int, from []int) {
-	ad.Debug(ad.RPC, "disconnect peer %d from %v\n", i, from)
+	ad.Debug(ad.RPC, "disconnect peer %d from %v", i, from)
 
 	// outgoing socket files
 	for j := 0; j < len(from); j++ {
@@ -175,7 +175,7 @@ func (cfg *config) ConnectAll() {
 func (cfg *config) partition(p1 []int, p2 []int) {
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
-	ad.Debug(ad.RPC, "partition servers into: %v %v\n", p1, p2)
+	ad.Debug(ad.RPC, "partition servers into: %v %v", p1, p2)
 	for i := 0; i < len(p1); i++ {
 		cfg.disconnectUnlocked(p1[i], p2)
 		cfg.connectUnlocked(p1[i], p1)
@@ -222,7 +222,7 @@ func (cfg *config) deleteClient(ck *Clerk) {
 
 // caller should hold cfg.mu
 func (cfg *config) ConnectClientUnlocked(ck *Clerk, to []int) {
-	ad.Debug(ad.RPC, "ConnectClient %v to %v\n", ck, to)
+	ad.Debug(ad.RPC, "ConnectClient %v to %v", ck, to)
 	endnames := cfg.clerks[ck]
 	for j := 0; j < len(to); j++ {
 		s := endnames[to[j]]
@@ -238,7 +238,7 @@ func (cfg *config) ConnectClient(ck *Clerk, to []int) {
 
 // caller should hold cfg.mu
 func (cfg *config) DisconnectClientUnlocked(ck *Clerk, from []int) {
-	ad.Debug(ad.RPC, "DisconnectClient %v from %v\n", ck, from)
+	ad.Debug(ad.RPC, "DisconnectClient %v from %v", ck, from)
 	endnames := cfg.clerks[ck]
 	for j := 0; j < len(from); j++ {
 		s := endnames[from[j]]
