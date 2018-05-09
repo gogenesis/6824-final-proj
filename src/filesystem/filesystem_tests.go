@@ -153,6 +153,7 @@ func HelpReadWrite(t *testing.T, fs FileSystem,
 // Whenever you add a new functionality test, be sure to add it to this list.
 // This list is used in test_setup.go to run every functionality test on every difficulty.
 var FunctionalityTests = []func(t *testing.T, fs FileSystem){
+	TestHelpGenerateJenkinsPipeline,
 	TestBasicOpenClose,
 	TestDeleteNotFound,
 	TestCloseClosed,
@@ -160,7 +161,7 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestOpenNotFound,
 	TestOpenAlreadyExists,
 	TestOpenROClose,
-	TestOpenROClose,
+	TestOpenROClose, //dup?
 	TestOpenROClose4,
 	TestOpenROClose64,
 	TestOpenRWClose,
@@ -195,6 +196,66 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	//TestMkdir,
 	//TestMkdirTree,
 	//TestOpenCloseDeleteAcrossDirectories,
+}
+
+var testNames = []string{
+	"TestBasicOpenClose",
+	"TestDeleteNotFound",
+	"TestCloseClosed",
+	"TestOpenOpened",
+	"TestOpenNotFound",
+	"TestOpenAlreadyExists",
+	"TestOpenROClose",
+	"TestOpenROClose4",
+	"TestOpenROClose64",
+	"TestOpenRWClose",
+	"TestOpenRWClose4",
+	"TestOpenRWClose64",
+	"TestOpenCloseLeastFD",
+	"TestOpenCloseDeleteMaxFD",
+	"TestOpenCloseDeleteRoot",
+	"TestOpenCloseDeleteRootMax",
+	"TestSeekErrorBadFD",
+	"TestSeekErrorBadOffsetOperation",
+	"TestSeekOffEOF",
+	"TestWriteClosedFile",
+	"TestWriteReadBasic",
+	"TestWriteReadBasic4",
+	"TestWrite1Byte",
+	"TestWrite8Bytes",
+	"TestWrite1KBytes",
+	"TestWrite1MBytes",
+	"TestWrite10MBytes",
+	"TestWrite100MBytes",
+	"TestReadClosedFile",
+	"TestWriteRead1ByteSimple",
+	"TestWriteRead8BytesSimple",
+	"TestWriteRead8BytesIter8",
+	"TestWriteRead8BytesIter64",
+	"TestWriteRead64BytesIter64K",
+	"TestWriteRead64KBIter1MB",
+	"TestWriteRead64KBIter10MB",
+	"TestWriteRead1MBIter100MB",
+	"TestMkdir",
+	"TestMkdirTree",
+	"TestOpenCloseDeleteAcrossDirectories",
+}
+
+// should save countless hours messing with Jenkinsfile.
+// eventually could automate the generation and push of the entire Jenkinsfile.
+func TestHelpGenerateJenkinsPipeline(t *testing.T, fs FileSystem) {
+	moduleStr := "MemoryFS"
+	//TODO timestamp the generation ... share with D's generation code eventually
+	for i := 0; i < len(testNames); i++ {
+		print(fmt.Sprintf(" stage('DB3 TestMemoryFS_%s') {\n", testNames[i]))
+		print("\t\tsteps {\n")
+		print("\t\t\tscript {\n")
+		print(fmt.Sprintf("\t\t\t\tsh 'THA_GO_DEBUG=3 DFS_DEFAULT_DEBUG_LEVEL=3 "+ //ugly ... break string into local vars eventually
+			"GO_TEST_PKG=Test%s_%s /volumes/babtin-volume/babtin/babtin/jenkins_dse_debug_optimized.sh 1 1 1 1'\n", moduleStr, testNames[i]))
+		print("\t\t\t}\n")
+		print("\t\t}\n")
+		print("\t}\n")
+	}
 }
 
 // ===== BEGIN OPEN CLOSE TESTS ======
