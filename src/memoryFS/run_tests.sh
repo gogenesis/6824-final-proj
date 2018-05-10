@@ -5,7 +5,11 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 run_test () {
    local name="$1"
    echo "Start $name" 
-   go test -run $name
+   if [ ! -z $JENKINS ]; then
+      /usr/local/go/bin/go test -run $name
+   else
+      go test -run $name
+   fi
    exit_code=$?
    if [ $exit_code != 0 ]; then
       exit $exit_code 
@@ -13,17 +17,21 @@ run_test () {
 }
 
 generate_tests () {
-   go generate
+   cd $SCRIPT_DIR/../main 
+   if [ ! -z $GOBIN ]; then
+      $GOBIN generate
+      return $?
+   else
+      echo "Skipping generation because GOBIN not set to point to a go binary"
+   fi
 }
 
 main () {
    pushd `pwd` > /dev/null
-   cd $SCRIPT_DIR/../main 
-   go generate
+   generate_tests
    if [ $? != 0 ]; then
-      echo "FAIL: test generation... continuing to run all tests"
-   else
-      echo "Tests generated successfully!"
+      echo "Test generation failed."
+      return 1
    fi
    cd $SCRIPT_DIR
    # As tests begin passing, to keep them included in future test runs,
@@ -66,6 +74,7 @@ main () {
 	  run_test "TestMemoryFS_TestWriteRead64KBIter1MB"
 	  run_test "TestMemoryFS_TestWriteRead64KBIter10MB"
 	  run_test "TestMemoryFS_TestWriteRead1MBIter100MB"
+	  run_test "TestMemoryFS_TestRndWriteReadVerfiyHoleExpansion"
 
 	  # ======= the line in the sand ======
 

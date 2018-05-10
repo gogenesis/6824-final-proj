@@ -53,21 +53,37 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestWrite10MBytes,
 	TestWrite100MBytes,
 	TestReadClosedFile,
-	TestWriteRead1ByteSimple,
-	TestWriteRead8BytesSimple,
-	TestWriteRead8BytesIter8,
-	TestWriteRead8BytesIter64,
-	TestWriteRead64BytesSimple,
-	TestWriteRead64BytesIter64K,
-	TestWriteRead64KBIter1MB,
-	TestWriteRead64KBIter10MB,
-	TestWriteRead1MBIter100MB,
-	// ========= the line in the sand =======
+	TestRndWriteRead1ByteSimple,
+	TestRndWriteRead8BytesSimple,
+	TestRndWriteRead8BytesIter8,
+	TestRndWriteRead8BytesIter64,
+	TestRndWriteRead64BytesSimple,
+	TestRndWriteRead64BytesIter64K,
+	TestRndWriteRead64KBIter1MB,
+	TestRndWriteRead64KBIter10MB,
+	TestRndWriteRead1MBIter100MB,
 	TestMkdir,
 	TestMkdirTree,
 	TestOpenCloseDeleteAcrossDirectories,
 	TestMkdirNotFound,
 	TestMkdirAlreadyExists,
+	TestRndWriteReadVerfiyHoleExpansion,
+}
+
+func HelpVerifyBytes(t *testing.T, a []byte, b []byte, msg string) {
+	ad.AssertExplainT(t, len(a) == len(b), "len(a) %d != len(b) %d", len(a), len(b))
+	for i := 0; i < len(a); i++ {
+		ad.AssertExplainT(t, a[i] == b[i], "%s ; i=%d (%d vs %d)",
+			msg, i, a[i], b[i])
+	}
+}
+
+func HelpMakeZeros(t *testing.T, n int) []byte {
+	zeros := make([]byte, n)
+	for i := 0; i < len(zeros); i++ {
+		zeros[i] = 0
+	}
+	return zeros
 }
 
 // ===== BEGIN OPEN CLOSE DELETE HELPERS =====
@@ -149,7 +165,7 @@ func HelpMkdir(t *testing.T, fs FileSystem, path string) {
 
 // ===== BEGIN READ WRITE SEEK HELPERS =====
 
-func HelpMakeBytes(t *testing.T, n int) []byte {
+func HelpMakeRndBytes(t *testing.T, n int) []byte {
 	rndBytes := make([]byte, n)
 	num, err := rand.Read(rndBytes)
 	ad.AssertExplainT(t, num == n, "mkbyte %d instead of %d", num, n)
@@ -178,8 +194,7 @@ func HelpRead(t *testing.T, fs FileSystem, fd int, numBytes int) (int, []byte) {
 }
 
 // error checked helper
-func HelpWrite(t *testing.T, fs FileSystem, fd int, contents string) int {
-	bytes := []byte(contents)
+func HelpWriteBytes(t *testing.T, fs FileSystem, fd int, bytes []byte) int {
 	numBytes := len(bytes)
 	numWritten, err := fs.Write(fd, numBytes, bytes)
 	ad.AssertNoErrorT(t, err)
@@ -187,15 +202,19 @@ func HelpWrite(t *testing.T, fs FileSystem, fd int, contents string) int {
 	return numWritten
 }
 
+func HelpWriteString(t *testing.T, fs FileSystem, fd int, contents string) int {
+	return HelpWriteBytes(t, fs, fd, []byte(contents))
+}
+
 // error checked helper
 func HelpReadWrite(t *testing.T, fs FileSystem, path string, contents string) int {
 	fd := HelpOpen(t, fs, path, ReadWrite, Create)
 	HelpSeek(t, fs, fd, 0, FromBeginning)
-	nBytes := HelpWrite(t, fs, fd, contents)
+	nBytes := HelpWriteString(t, fs, fd, contents)
 	ad.AssertExplainT(t, nBytes == len(contents), "%d bytes written vs %d", nBytes, len(contents))
 	HelpSeek(t, fs, fd, 0, FromBeginning) //rewind to start reading
 	nBytes, data := HelpRead(t, fs, fd, len(contents))
-	for bite := 0; bite < len(contents); bite++ {
+	for bite := 0; bite < len(contents); bite++ { //byte is reserved
 		ad.AssertExplainT(t, data[bite] == contents[bite],
 			"read data %s vs %s", data[bite], contents[bite])
 	}
@@ -232,30 +251,45 @@ var testNames = []string{
 	"TestWrite10MBytes",
 	"TestWrite100MBytes",
 	"TestReadClosedFile",
-	"TestWriteRead1ByteSimple",
-	"TestWriteRead8BytesSimple",
-	"TestWriteRead8BytesIter8",
-	"TestWriteRead8BytesIter64",
-	"TestWriteRead64BytesIter64K",
-	"TestWriteRead64KBIter1MB",
-	"TestWriteRead64KBIter10MB",
-	"TestWriteRead1MBIter100MB",
-	"TestMkdir",
-	"TestMkdirTree",
-	"TestOpenCloseDeleteAcrossDirectories",
+	"TestRndWriteRead1ByteSimple",
+	"TestRndWriteRead8BytesSimple",
+	"TestRndWriteRead8BytesIter8",
+	"TestRndWriteRead8BytesIter64",
+	"TestRndWriteRead64BytesIter64K",
+	"TestRndWriteRead64KBIter1MB",
+	"TestRndWriteRead64KBIter10MB",
+	"TestRndWriteRead1MBIter100MB",
+	"TestRndWriteReadVerfiyHoleExpansion",
 }
+
+// ===== the line in the sand =====
+// "TestMkdir",
+//	"TestMkdirTree",
+//	"TestOpenCloseDeleteAcrossDirectories",
 
 // should save countless hours messing with Jenkinsfile.
 // eventually could automate the generation and push of the entire Jenkinsfile.
 func TestHelpGenerateJenkinsPipeline(t *testing.T, fs FileSystem) {
-	moduleStr := "MemoryFS"
-	//TODO timestamp the generation ... share with D's generation code eventually
+	//Core MemoryFS
+	combName := "MemoryFS"
 	for i := 0; i < len(testNames); i++ {
-		print(fmt.Sprintf(" stage('DB3 TestMemoryFS_%s') {\n", testNames[i]))
+		print(fmt.Sprintf(" stage('DB3 Test%s_%s') {\n", combName, testNames[i]))
 		print("\t\tsteps {\n")
 		print("\t\t\tscript {\n")
-		print(fmt.Sprintf("\t\t\t\tsh 'THA_GO_DEBUG=3 DFS_DEFAULT_DEBUG_LEVEL=3 "+ //ugly ... break string into local vars eventually
-			"GO_TEST_PKG=Test%s_%s /volumes/babtin-volume/babtin/babtin/jenkins_dse_debug_optimized.sh 1 1 1 1'\n", moduleStr, testNames[i]))
+		print(fmt.Sprintf("\t\t\t\tsh '"+ //ugly ... break string into local vars eventually
+			"GO_TEST_PKG=Test%s_%s /volumes/babtin-volume/babtin/babtin/jenkins_dse_debug_optimized.sh 1 1 1 1'\n", combName, testNames[i]))
+		print("\t\t\t}\n")
+		print("\t\t}\n")
+		print("\t}\n")
+	}
+	//TestClerk_OneClerkThreeServersNoErrors
+	combName = "Clerk_OneClerkThreeServersNoErrors"
+	for i := 0; i < len(testNames); i++ {
+		print(fmt.Sprintf(" stage('DB3 Test%s_%s') {\n", combName, testNames[i]))
+		print("\t\tsteps {\n")
+		print("\t\t\tscript {\n")
+		print(fmt.Sprintf("\t\t\t\tsh '"+ //ugly ... break string into local vars eventually
+			"GO_TEST_SRC=$GOPATH/src/fsraft GO_TEST_PKG=Test%s_%s /volumes/babtin-volume/babtin/babtin/jenkins_dse_debug_optimized.sh 1 1 1 1'\n", combName, testNames[i]))
 		print("\t\t\t}\n")
 		print("\t\t}\n")
 		print("\t}\n")
@@ -364,7 +398,7 @@ func TestOpenOffsetEqualsZero(t *testing.T, fs FileSystem) {
 func TestOpenTruncate(t *testing.T, fs FileSystem) {
 	contentString := "Some arbitrary text here"
 	fd := HelpOpen(t, fs, "/foo.txt", WriteOnly, Create)
-	HelpWrite(t, fs, fd, contentString)
+	HelpWriteString(t, fs, fd, contentString)
 	HelpClose(t, fs, fd)
 
 	fd = HelpOpen(t, fs, "/foo.txt", ReadOnly, Truncate)
@@ -380,7 +414,7 @@ func TestOpenAppend(t *testing.T, fs FileSystem) {
 	contentString := "Some arbitrary text here"
 	contentLengthBytes := len([]byte(contentString))
 	fd := HelpOpen(t, fs, "/foo.txt", WriteOnly, Create)
-	HelpWrite(t, fs, fd, contentString)
+	HelpWriteString(t, fs, fd, contentString)
 	HelpClose(t, fs, fd)
 
 	fd = HelpOpen(t, fs, "/foo.txt", ReadOnly, Append)
@@ -512,7 +546,7 @@ func TestSeekOffEOF(t *testing.T, fs FileSystem) {
 // TODO need a debug interface to simulate the test datastore has an IO error...
 
 func TestWriteClosedFile(t *testing.T, fs FileSystem) {
-	n, err := fs.Write(555, 5, HelpMakeBytes(t, 5)) //must be uninit
+	n, err := fs.Write(555, 5, HelpMakeRndBytes(t, 5)) //must be uninit
 	ad.AssertExplainT(t, err == InactiveFD, "err %s", err)
 	ad.AssertExplainT(t, n == -1, "wr %d", n)
 }
@@ -521,7 +555,7 @@ func TestWriteNBytesIter(t *testing.T, fs FileSystem, fileName string, nBytes in
 	fd := HelpOpen(t, fs, fileName, ReadWrite, Create)
 	data := make([]byte, 0)
 	for i := 0; i < iters; i++ {
-		data = HelpMakeBytes(t, nBytes)
+		data = HelpMakeRndBytes(t, nBytes)
 		ad.AssertExplainT(t, len(data) == nBytes, "made %d len array", len(data))
 		n, err := fs.Write(fd, nBytes, data)
 		ad.AssertExplainT(t, err == nil, "err %s", err)
@@ -563,12 +597,14 @@ func TestReadClosedFile(t *testing.T, fs FileSystem) {
 	ad.AssertExplainT(t, n == -1, "wr %d", n)
 	ad.AssertExplainT(t, len(data) == 0, "no data should have been read")
 }
-func TestWriteReadNBytesIter(t *testing.T, fs FileSystem,
+
+func TestRndWriteReadNBytesIter(t *testing.T, fs FileSystem,
 	fileName string, nBytes int, iters int) {
 	fd := HelpOpen(t, fs, fileName, ReadWrite, Create)
 	dataIn := make([]byte, 0)
 	for i := 0; i < iters; i++ {
-		dataIn = HelpMakeBytes(t, nBytes)
+		//@dedup
+		dataIn = HelpMakeRndBytes(t, nBytes)
 		ad.AssertExplainT(t, len(dataIn) == nBytes, "made %d len array", len(dataIn))
 		nWr, err := fs.Write(fd, nBytes, dataIn)
 		ad.AssertExplainT(t, err == nil, "err %s", err)
@@ -630,41 +666,84 @@ func TestWriteSomeButNotAll(t *testing.T, fs FileSystem) {
 
 // ====== BYTE LEVEL WRITE & READ CHUNK TESTS =====
 
-func TestWriteRead1ByteSimple(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-1-simple.txt", 1, 1)
+func TestRndWriteRead1ByteSimple(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-8.txt", 1, 1)
 }
 
-func TestWriteRead8BytesSimple(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-8.txt", 8, 1)
+func TestRndWriteRead8BytesSimple(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-8.txt", 8, 1)
 }
 
-func TestWriteRead8BytesIter8(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-8-iter-8.txt", 8, 8)
+func TestRndWriteRead8BytesIter8(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-8-iter-8.txt", 8, 8)
 }
 
-func TestWriteRead8BytesIter64(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-8-iter-64.txt", 8, 64)
+func TestRndWriteRead8BytesIter64(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-8-iter-64.txt", 8, 64)
 }
 
-func TestWriteRead64BytesSimple(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-64-iter-1.txt", 64, 1)
+func TestRndWriteRead64BytesSimple(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-64-iter-1.txt", 64, 1)
 }
 
-func TestWriteRead64BytesIter64K(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-64k-iter-1K.txt", 64, 1000)
+func TestRndWriteRead64BytesIter64K(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-1K.txt", 64, 1000)
 }
 
-func TestWriteRead64KBIter1MB(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-64k-iter-10M.txt", 6400, 160)
+func TestRndWriteRead64KBIter1MB(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-10M.txt", 6400, 160)
 }
 
-func TestWriteRead64KBIter10MB(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-64k-iter-100M.txt", 6400, 1600)
+func TestRndWriteRead64KBIter10MB(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-100M.txt", 6400, 1600)
 }
 
-func TestWriteRead1MBIter100MB(t *testing.T, fs FileSystem) {
-	TestWriteReadNBytesIter(t, fs, "/r-1MB-iter-100M.txt", 1000000, 10)
+func TestRndWriteRead1MBIter100MB(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-1MB-iter-100M.txt", 1000000, 10)
 }
+
+func TestRndWriteReadVerfiyHoleExpansion(t *testing.T, fs FileSystem) {
+	fd := HelpOpen(t, fs, "/few-holey-bytes.txt", ReadWrite, Create)
+	nBytes := 64
+	shore := HelpMakeRndBytes(t, nBytes)      // 64 random bytes
+	HelpWriteBytes(t, fs, fd, shore)  // offset now 64
+	HelpSeek(t, fs, fd, 0, FromBeginning)     // offset now 0
+	_, shoreRd := HelpRead(t, fs, fd, nBytes) // offset now 64
+	HelpVerifyBytes(t, shore, shoreRd, "shore integrity")
+
+	// seek past EOF leaving 64 byte hole
+	HelpSeek(t, fs, fd, 128, FromBeginning) // offset now 128 leaving 64 byte gap
+	// write another few bytes to make an island
+	nBytes = 128
+	island := HelpMakeRndBytes(t, nBytes)
+	fs.Write(fd, nBytes, island) // offset now 256 leaving 128 rnd byte island
+
+	HelpSeek(t, fs, fd, 0, FromBeginning) // offset now 0
+	nBytes = 64
+	_, shoreRd = HelpRead(t, fs, fd, nBytes) // offset now 64 (beginning of hole)
+	HelpVerifyBytes(t, shore, shoreRd, "shore deviation")
+
+	// verify the zero filled hole appeared
+	_, holeRd := HelpRead(t, fs, fd, nBytes) // offset now 128 (end of hole / beginning of island)
+	HelpVerifyBytes(t, HelpMakeZeros(t, 64), holeRd, "hole deviation")
+
+	// verify island
+	_, islandRd := HelpRead(t, fs, fd, 128) // offset now 256
+	HelpVerifyBytes(t, island, islandRd, "island deviation")
+
+	// PUT IN OWN TEST EVENTUALLY
+	// verify read past EOF results in 0 bytes read
+	nRd, data, err := fs.Read(fd, 1) // seek past EOF at 257
+	ad.AssertExplainT(t, nRd == 0, "EOF read %d", nRd)
+	ad.AssertExplainT(t, len(data) == 0, "EOF len(data) %d", len(data))
+	ad.AssertExplainT(t, err == nil, "EOF read err %s", err)
+
+	fs.Close(fd)
+	fs.Delete("/few-holey-bytes.txt")
+}
+
+// ===== THE LINE IN THE SAND ==========
+// TOMORROW: Wed 5/9/18
 
 // ===== BEGIN WRITE READ HOLE TESTS =====
 
