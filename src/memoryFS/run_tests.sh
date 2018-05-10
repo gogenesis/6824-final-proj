@@ -17,17 +17,21 @@ run_test () {
 }
 
 generate_tests () {
-   go generate
+   cd $SCRIPT_DIR/../main 
+   if [ ! -z $GOBIN ]; then
+      $GOBIN generate
+      return $?
+   else
+      echo "Skipping generation because GOBIN not set to point to a go binary"
+   fi
 }
 
 main () {
    pushd `pwd` > /dev/null
-   cd $SCRIPT_DIR/../main 
-   go generate
+   generate_tests
    if [ $? != 0 ]; then
-      echo "FAIL: test generation... continuing to run all tests"
-   else
-      echo "Tests generated successfully!"
+      echo "Test generation failed."
+      return 1
    fi
    cd $SCRIPT_DIR
    # As tests begin passing, to keep them included in future test runs,
