@@ -3,6 +3,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 main () {
    if [ "$1" == "" ]; then
       echo "usage: generate_run_tests.sh <module ex: MemoryFS>"
+      return 1
    fi
    cd $SCRIPT_DIR/../filesystem/
    # confirm we can build and format tests
