@@ -13,10 +13,66 @@ import (
 // Instead, these functionality tests can run against any class that implements the FileSystem interface
 // by creating a unit test suite for your implementation class that calls these tests.
 
+// @tests
+// Whenever you add a new functionality test, be sure to add it to this list.
+// This list is used in test_setup.go to run every functionality test on every difficulty.
+var FunctionalityTests = []func(t *testing.T, fs FileSystem){
+	TestHelpGenerateJenkinsPipeline,
+	TestBasicOpenClose,
+	TestDeleteNotFound,
+	TestCloseClosed,
+	TestOpenOpened,
+	TestOpenNotFound,
+	TestOpenAlreadyExists,
+	TestOpenROClose,
+	TestOpenROClose4,
+	TestOpenROClose64,
+	TestOpenRWClose,
+	TestOpenRWClose4,
+	TestOpenRWClose64,
+	TestOpenCloseLeastFD,
+	TestOpenCloseDeleteMaxFD,
+	TestOpenOffsetEqualsZero,
+	TestOpenTruncate,
+	TestOpenAppend,
+	TestOpenCloseDeleteRoot,
+	TestOpenCloseDeleteRootMax,
+	TestSeekErrorBadFD,
+	TestSeekErrorBadOffsetOperation,
+	TestSeekOffEOF,
+	TestWriteClosedFile,
+	TestWriteReadBasic,
+	TestWriteReadBasic4,
+	TestCannotReadFromWriteOnly,
+	TestCannotWriteToReadOnly,
+	TestWriteSomeButNotAll,
+	TestWrite1Byte,
+	TestWrite8Bytes,
+	TestWrite1KBytes,
+	TestWrite1MBytes,
+	TestWrite10MBytes,
+	TestWrite100MBytes,
+	TestReadClosedFile,
+	TestWriteRead1ByteSimple,
+	TestWriteRead8BytesSimple,
+	TestWriteRead8BytesIter8,
+	TestWriteRead8BytesIter64,
+	TestWriteRead64BytesSimple,
+	TestWriteRead64BytesIter64K,
+	TestWriteRead64KBIter1MB,
+	TestWriteRead64KBIter10MB,
+	TestWriteRead1MBIter100MB,
+	// ========= the line in the sand =======
+	TestMkdir,
+	TestMkdirTree,
+	TestOpenCloseDeleteAcrossDirectories,
+	TestMkdirNotFound,
+	TestMkdirAlreadyExists,
+}
+
 // ===== BEGIN OPEN CLOSE DELETE HELPERS =====
 
-func HelpDelete(t *testing.T, fs FileSystem,
-	pathname string) {
+func HelpDelete(t *testing.T, fs FileSystem, pathname string) {
 	success, err := fs.Delete(pathname)
 	ad.AssertExplainT(t, success && err == nil, "err %s deleting %s", err, pathname)
 }
@@ -24,7 +80,8 @@ func HelpDelete(t *testing.T, fs FileSystem,
 func HelpOpen(t *testing.T, fs FileSystem,
 	path string, mode OpenMode, flags OpenFlags) int {
 	fd, err := fs.Open(path, mode, flags)
-	ad.AssertExplainT(t, fd > 0 && err == nil, "err %s opening %s", err, path)
+	ad.AssertExplainT(t, err == nil, "Got error %s when trying to Open(%s, %s, %s)", err, path, mode, flags)
+	ad.AssertExplainT(t, fd > 0, "Got negative fd %d when trying to Open(%s, %s, %s)", fd, path, mode, flags)
 	return fd
 }
 
@@ -34,13 +91,12 @@ func HelpTestOpenNotFound(t *testing.T, fs FileSystem,
 	ad.AssertExplainT(t, err == NotFound, "1st case didnt produce error")
 	ad.AssertExplainT(t, fd == -1, "fd should be negative on error")
 
-	fd, err = fs.Open("f_wo_root_slash", mode, flags) // should we handle this?
+	fd, err = fs.Open("f_wo_root_slash", mode, flags)
 	ad.AssertExplainT(t, err == NotFound, "2nd case didnt produce error")
 	ad.AssertExplainT(t, fd == -1, "fd should be negative on error")
 }
 
-func HelpClose(t *testing.T, fs FileSystem,
-	fd int) {
+func HelpClose(t *testing.T, fs FileSystem, fd int) {
 	success, err := fs.Close(fd)
 	ad.AssertExplainT(t, success && err == nil, "err closing fd %d", fd)
 }
@@ -82,8 +138,7 @@ func HelpBatchDelete(t *testing.T, fs FileSystem,
 
 // ===== BEGIN MKDIR HELPERS =====
 
-func HelpMkdir(t *testing.T, fs FileSystem,
-	path string) {
+func HelpMkdir(t *testing.T, fs FileSystem, path string) {
 	success, err := fs.Mkdir(path)
 	ad.AssertNoErrorT(t, err)
 	ad.AssertT(t, success)
@@ -109,7 +164,8 @@ func HelpSeek(t *testing.T, fs FileSystem,
 	ad.AssertNoErrorT(t, err)
 	if mode == FromBeginning {
 		ad.AssertEqualsT(t, offset, newPosition)
-	} // can we auto-check more seek behavior...
+	}
+	ad.AssertT(t, newPosition >= 0)
 	return newPosition
 }
 
@@ -122,8 +178,7 @@ func HelpRead(t *testing.T, fs FileSystem, fd int, numBytes int) (int, []byte) {
 }
 
 // error checked helper
-func HelpWrite(t *testing.T, fs FileSystem,
-	fd int, contents string) int {
+func HelpWrite(t *testing.T, fs FileSystem, fd int, contents string) int {
 	bytes := []byte(contents)
 	numBytes := len(bytes)
 	numWritten, err := fs.Write(fd, numBytes, bytes)
@@ -133,13 +188,11 @@ func HelpWrite(t *testing.T, fs FileSystem,
 }
 
 // error checked helper
-func HelpReadWrite(t *testing.T, fs FileSystem,
-	path string, contents string) int {
+func HelpReadWrite(t *testing.T, fs FileSystem, path string, contents string) int {
 	fd := HelpOpen(t, fs, path, ReadWrite, Create)
 	HelpSeek(t, fs, fd, 0, FromBeginning)
 	nBytes := HelpWrite(t, fs, fd, contents)
-	ad.AssertExplainT(t, nBytes == len(contents),
-		"%d bytes written vs %d", nBytes, len(contents))
+	ad.AssertExplainT(t, nBytes == len(contents), "%d bytes written vs %d", nBytes, len(contents))
 	HelpSeek(t, fs, fd, 0, FromBeginning) //rewind to start reading
 	nBytes, data := HelpRead(t, fs, fd, len(contents))
 	for bite := 0; bite < len(contents); bite++ {
@@ -147,55 +200,6 @@ func HelpReadWrite(t *testing.T, fs FileSystem,
 			"read data %s vs %s", data[bite], contents[bite])
 	}
 	return nBytes
-}
-
-// @tests
-// Whenever you add a new functionality test, be sure to add it to this list.
-// This list is used in test_setup.go to run every functionality test on every difficulty.
-var FunctionalityTests = []func(t *testing.T, fs FileSystem){
-	TestHelpGenerateJenkinsPipeline,
-	TestBasicOpenClose,
-	TestDeleteNotFound,
-	TestCloseClosed,
-	TestOpenOpened,
-	TestOpenNotFound,
-	TestOpenAlreadyExists,
-	TestOpenROClose,
-	TestOpenROClose, //dup?
-	TestOpenROClose4,
-	TestOpenROClose64,
-	TestOpenRWClose,
-	TestOpenRWClose4,
-	TestOpenRWClose64,
-	TestOpenCloseLeastFD,
-	TestOpenCloseDeleteMaxFD,
-	TestOpenCloseDeleteRoot,
-	TestOpenCloseDeleteRootMax,
-	TestSeekErrorBadFD,
-	TestSeekErrorBadOffsetOperation,
-	TestSeekOffEOF,
-	TestWriteClosedFile,
-	TestWriteReadBasic,
-	TestWriteReadBasic4,
-	TestWrite1Byte,
-	TestWrite8Bytes,
-	TestWrite1KBytes,
-	TestWrite1MBytes,
-	TestWrite10MBytes,
-	TestWrite100MBytes,
-	TestReadClosedFile,
-	TestWriteRead1ByteSimple,
-	TestWriteRead8BytesSimple,
-	TestWriteRead8BytesIter8,
-	TestWriteRead8BytesIter64,
-	TestWriteRead64BytesIter64K,
-	TestWriteRead64KBIter1MB,
-	TestWriteRead64KBIter10MB,
-	TestWriteRead1MBIter100MB,
-	// ========= the line in the sand =======
-	//TestMkdir,
-	//TestMkdirTree,
-	//TestOpenCloseDeleteAcrossDirectories,
 }
 
 var testNames = []string{
@@ -350,6 +354,47 @@ func TestOpenCloseLeastFD(t *testing.T, fs FileSystem) {
 	HelpClose(t, fs, fd4)
 }
 
+func TestOpenOffsetEqualsZero(t *testing.T, fs FileSystem) {
+	fd := HelpOpen(t, fs, "/foo.txt", ReadOnly, Create)
+	// Seek to 0 from current just gets us the current position
+	pos := HelpSeek(t, fs, fd, 0, FromCurrent)
+	ad.AssertExplainT(t, pos == 0, "Newly created file had non-zero offset %d", pos)
+}
+
+func TestOpenTruncate(t *testing.T, fs FileSystem) {
+	contentString := "Some arbitrary text here"
+	fd := HelpOpen(t, fs, "/foo.txt", WriteOnly, Create)
+	HelpWrite(t, fs, fd, contentString)
+	HelpClose(t, fs, fd)
+
+	fd = HelpOpen(t, fs, "/foo.txt", ReadOnly, Truncate)
+	offset := HelpSeek(t, fs, fd, 0, FromCurrent)
+	ad.AssertExplainT(t, offset == 0, "Opened a file with Truncate, but got non-zero offset %d.", offset)
+	bytesRead, _, err := fs.Read(fd, len([]byte(contentString)))
+	ad.AssertExplainT(t, bytesRead == 0, "Able to read %d bytes from a file opened with Truncate, expected 0.", bytesRead)
+	ad.AssertExplainT(t, err == nil, "Got non-nil error when trying to read fro mempty file: %s", err)
+
+}
+
+func TestOpenAppend(t *testing.T, fs FileSystem) {
+	contentString := "Some arbitrary text here"
+	contentLengthBytes := len([]byte(contentString))
+	fd := HelpOpen(t, fs, "/foo.txt", WriteOnly, Create)
+	HelpWrite(t, fs, fd, contentString)
+	HelpClose(t, fs, fd)
+
+	fd = HelpOpen(t, fs, "/foo.txt", ReadOnly, Append)
+	// Seek to 0 from current to get the current position.
+	// Make sure it is the right distance from the beginning of the file.
+	pos := HelpSeek(t, fs, fd, 0, FromCurrent)
+	ad.AssertExplainT(t, pos == contentLengthBytes, "Opened a file for append and expected "+
+		"the offset to be at the end of the file (position %d), but it was actually at position %d.")
+
+	// Now make sure that position was actually at the end of the file.
+	newPos := HelpSeek(t, fs, fd, 0, FromEnd)
+	ad.AssertEqualsT(t, pos, newPos)
+}
+
 // open and close files checking all FDs open correctly up to limit,
 // open a few past the limit, confirm we get errors, then close and delete all.
 func TestOpenCloseDeleteMaxFD(t *testing.T, fs FileSystem) {
@@ -410,8 +455,6 @@ func TestOpenCloseDeleteRootMax(t *testing.T, fs FileSystem) {
 	HelpBatchDelete(t, fs, maxFD, "/max-root-opens-%d")
 }
 
-// TODO next is same set of tests involving subdirs
-
 //  ================== the line in the sand ====================
 //  keeps moving down as tests begin passing and stay passing!
 
@@ -428,14 +471,14 @@ func TestSeekErrorBadFD(t *testing.T, fs FileSystem) {
 func TestSeekErrorBadOffsetOperation(t *testing.T, fs FileSystem) {
 	filename := "/bad-offset-operation.txt"
 	fd := HelpOpen(t, fs, filename, ReadWrite, Create)
+
 	// Enforce only one option
 	_, err := fs.Seek(fd, 0, -1)
 	ad.AssertExplainT(t, err == IllegalArgument, "illegal seek mode wrong err")
 	_, err = fs.Seek(fd, 0, 3)
 	ad.AssertExplainT(t, err == IllegalArgument, "illegal seek mode wrong err")
-	_, err = fs.Seek(fd, 0, 0)
-	ad.AssertExplainT(t, err == nil, "illegal seek mode err")
-	_, err = fs.Seek(fd, 0, 1)
+
+	_, err = fs.Seek(fd, 0, FromCurrent)
 	ad.AssertExplainT(t, err == nil, "illegal seek mode err")
 	_, err = fs.Seek(fd, 0, 2)
 	ad.AssertExplainT(t, err == nil, "illegal seek mode err")
@@ -555,6 +598,36 @@ func TestWriteReadBasic4(t *testing.T, fs FileSystem) {
 	HelpReadWrite(t, fs, "/foo4.txt", "bar4")
 }
 
+func TestCannotReadFromWriteOnly(t *testing.T, fs FileSystem) {
+	fd := HelpOpen(t, fs, "/foo.txt", WriteOnly, Create)
+	bytesRead, _, err := fs.Read(fd, 1) // Arbitrarily, as long as it's more than 0
+	ad.AssertExplainT(t, err == WrongMode, "Expected a WrongMode error when attempting to read from a WriteOnly file. "+
+		"Instead, got err=%v", err)
+	ad.AssertEqualsT(t, -1, bytesRead)
+	// if err is non-nil, data is unspecified, which is why we don't check it here.
+}
+
+func TestCannotWriteToReadOnly(t *testing.T, fs FileSystem) {
+	fd := HelpOpen(t, fs, "/foo.txt", ReadOnly, Create)
+	content := []byte("arbitrary content here")
+	bytesWritten, err := fs.Write(fd, len(content), content)
+	ad.AssertExplainT(t, err == WrongMode, "Expected a WrongMode error when attempting to write to a ReadOnly file. "+
+		"Instead, got err=%v", err)
+	ad.AssertEqualsT(t, -1, bytesWritten)
+}
+
+func TestWriteSomeButNotAll(t *testing.T, fs FileSystem) {
+	fd := HelpOpen(t, fs, "/foo.txt", ReadWrite, Create)
+	data := []byte("arbitrary content here")
+	numBytesToWrite := 5                   // arbitrarily, but must be < len(data)
+	ad.Assert(numBytesToWrite < len(data)) // or else the test won't test what it's supposed to test
+	bytesWritten, err := fs.Write(fd, numBytesToWrite, data)
+	ad.AssertExplainT(t, err == nil, "When writing %d bytes of a %d-byte data, got non-nil err %v.",
+		numBytesToWrite, len(data), err)
+	ad.AssertExplainT(t, bytesWritten == 2, "When writing %d bytes of a %d-byte data, actually wrote %d bytes",
+		numBytesToWrite, len(data), bytesWritten)
+}
+
 // ====== BYTE LEVEL WRITE & READ CHUNK TESTS =====
 
 func TestWriteRead1ByteSimple(t *testing.T, fs FileSystem) {
@@ -599,35 +672,34 @@ func TestWriteRead1MBIter100MB(t *testing.T, fs FileSystem) {
 // TODO the next set of tests will create holes, seek around, fill files with data
 
 // ===== BEGIN MKDIR TESTS =====
-// TODO subdirectories next...
 
 func TestMkdir(t *testing.T, fs FileSystem) {
 	HelpMkdir(t, fs, "/a-dir-1")
 	HelpMkdir(t, fs, "/a-dir-2")
 	HelpMkdir(t, fs, "/a-dir-3")
 	HelpMkdir(t, fs, "/a-dir-4")
-	HelpDelete(t, fs, "/a-dir-1")
-	HelpDelete(t, fs, "/a-dir-2")
-	HelpDelete(t, fs, "/a-dir-3")
-	HelpDelete(t, fs, "/a-dir-4")
 }
 
 func TestMkdirTree(t *testing.T, fs FileSystem) {
-	HelpMkdir(t, fs, "/a-dir-1")
-	HelpMkdir(t, fs, "/a-dir-2")
-	HelpMkdir(t, fs, "/a-dir-3")
-	HelpMkdir(t, fs, "/a-dir-4")
-	HelpMkdir(t, fs, "/a-dir-1/sub1")
-	HelpMkdir(t, fs, "/a-dir-2/sub2/sub3")
-	HelpMkdir(t, fs, "/a-dir-3/sub2/sub3/sub4/sub5")
-	HelpMkdir(t, fs, "/a-dir-4/sub2/sub3/sub4/sub5/sub6")
-	HelpDelete(t, fs, "/a-dir-1")
-	HelpDelete(t, fs, "/a-dir-2")
-	HelpDelete(t, fs, "/a-dir-3")
-	HelpDelete(t, fs, "/a-dir-4")
+	HelpMkdir(t, fs, "/grandparent")
+	HelpMkdir(t, fs, "/grandparent/parent")
+	HelpMkdir(t, fs, "/grandparent/parent/child")
+	HelpMkdir(t, fs, "/grandparent/auntOrUncle")
+	HelpMkdir(t, fs, "/grandparent/auntOrUncle/cousin")
 }
 
-//TODO larger trees coming soon
+func TestMkdirNotFound(t *testing.T, fs FileSystem) {
+	success, err := fs.Mkdir("/foo/bar/baz")
+	ad.AssertEqualsT(t, NotFound, err)
+	ad.AssertT(t, !success)
+}
+
+func TestMkdirAlreadyExists(t *testing.T, fs FileSystem) {
+	HelpMkdir(t, fs, "/foo")
+	success, err := fs.Mkdir("/foo")
+	ad.AssertEqualsT(t, AlreadyExists, err)
+	ad.AssertT(t, !success)
+}
 
 func TestOpenCloseDeleteAcrossDirectories(t *testing.T, fs FileSystem) {
 	HelpMkdir(t, fs, "/dir1")

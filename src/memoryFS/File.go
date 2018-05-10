@@ -44,44 +44,69 @@ func (file *File) Open(mode filesystem.OpenMode, flags filesystem.OpenFlags) (er
 
 // See FileSystem::Close.
 func (file *File) Close() (success bool, err error) {
-	if !file.isOpen {
-		panic("Attempted to close a closed file! This should never happen because you need a fd to close a file.")
-	}
+	ad.AssertExplain(file.isOpen, "Attempted to close a closed file! "+
+		"This should never happen because you need a fd to close a file.")
 	file.isOpen = false
 	return true, nil
 }
 
 // See FileSystem::Seek.
 func (file *File) Seek(offset int, base filesystem.SeekMode) (newPosition int, err error) {
-	// currently supporting FromBeginning
-	file.offset = offset
+	prevOffset := file.offset // In case we need to rollback the operation.
+
+	switch base {
+	case filesystem.FromBeginning:
+		file.offset = offset
+	case filesystem.FromCurrent:
+		file.offset += offset
+	case filesystem.FromEnd:
+		file.offset = len(file.contents) + offset
+	}
+
+	if file.offset < 0 {
+		// Cannot have offset before the beginning of the file, so revert
+		file.offset = prevOffset
+		return -1, filesystem.IllegalArgument
+	}
+
 	return file.offset, nil
 }
 
 // See FileSystem::Read.
 func (file *File) Read(numBytes int) (bytesRead int, data []byte, err error) {
-	readBytes := make([]byte, numBytes)
 	if numBytes < 0 {
-		return -1, make([]byte, 0), filesystem.IllegalArgument
+		return -1, nil, filesystem.IllegalArgument
+	}
+	if file.openMode == filesystem.WriteOnly {
+		return -1, nil, filesystem.WrongMode
+	}
+	if numBytes == 0 || file.offset >= len(file.contents) {
+		// This is specified to be a no-op.
+		return 0, make([]byte, 0), nil
 	}
 
-	//TODO @dir if directory {
-	//    return -1, IsDirectory
-	// }
-
-	if file.offset+numBytes > len(file.contents) { //if offset goes past end of file
-		return 0, make([]byte, 0), nil //no bytes are read
+	if file.offset+numBytes <= len(file.contents) {
+		// We can read numBytes without hitting the end of the file.
+		bytesRead = numBytes
+		data = make([]byte, bytesRead)
+		copy(data, file.contents[file.offset:file.offset+numBytes])
+		file.offset += bytesRead
+	} else {
+		// We can only read up to the end of the file.
+		bytesRead = len(file.contents) - file.offset
+		data = make([]byte, bytesRead)
+		copy(data, file.contents[file.offset:])
+		file.offset = len(file.contents)
 	}
-	ad.AssertExplain(file.offset+numBytes <= len(file.contents),
-		"reading past end of data")
-	copy(readBytes, file.contents[file.offset:file.offset+numBytes])
-	file.offset += numBytes
-	ad.Debug(ad.RPC, "offset now %d", file.offset)
-	return numBytes, readBytes, nil
+
+	return bytesRead, data, nil
 }
 
 // See FileSystem::Write.
 func (file *File) Write(numBytes int, data []byte) (bytesWritten int, err error) {
+	if file.openMode == filesystem.ReadOnly {
+		return -1, filesystem.WrongMode
+	}
 	ad.AssertExplain(numBytes == len(data), "bad numBytes %d vs len(data) %d",
 		numBytes, len(data))
 	// grow file as needed, leaving holes >EOF written

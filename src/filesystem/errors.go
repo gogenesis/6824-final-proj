@@ -24,6 +24,7 @@ const (
 	AlreadyExists                      // The specified pathname already exists (EEXIST).
 	AlreadyOpen                        // An attempt was made to open a file that is already open. This error does not exist in POSIX because a file can only be opened once here.
 	WriteTooLarge                      // An attempt was made to write too much data in a single call to Write().
+	WrongMode                          // An attempt was made to write to a read-only file or read from a write-only file.
 )
 
 var errorCodesToNames = map[ErrorCode]string{

@@ -1,5 +1,7 @@
 package filesystem
 
+import "strings"
+
 type FileSystem interface {
 
 	// Creates a directory.
@@ -19,6 +21,7 @@ type FileSystem interface {
 	// If the file does not exist and the Create flag is included, creates it and then opens it.
 	// If the file does not exist and the Create flag is not included, returns NotFound error.
 	// If the Truncate flag is set, truncates the file size to 0 (if opening succeeds).
+	// A newly created file has its offset set to 0.
 	// Possible errors are IsDirectory, TooManyFDsOpen, NotFound, AlreadyOpen, and TryAgain.
 	// fileDescriptor == -1 if and only iff err is non-nil.
 	Open(path string, mode OpenMode, flags OpenFlags) (fileDescriptor int, err error)
@@ -48,7 +51,8 @@ type FileSystem interface {
 	// bytes read.  If the file offset is at or past the end of file, no
 	// bytes are read, and read() returns zero.
 	// If numBytes is zero, this is a no-op. If numBytes is negative, returns IllegalArgument.
-	// Possible errors are IsDirectory, IOError, InactiveFD, IllegalArgument, and TryAgain.
+	// If the file is open for writing only, returns WrongMode.
+	// Possible errors are IOError, WrongMode, InactiveFD, IllegalArgument, and TryAgain.
 	// If err is non-nil, bytesRead is 0 and data is unspecified.
 	Read(fileDescriptor int, numBytes int) (bytesRead int, data []byte, err error)
 
@@ -62,7 +66,8 @@ type FileSystem interface {
 	// first set to the end of the file before writing.  The adjustment of
 	// the file offset and the write operation are performed as an atomic step.
 	// If numBytes is zero, this is a no-op. If numBytes is negative, returns IllegalArgument.
-	// Possible errors are IsDirectory, IOError, InactiveFD, TryAgain, FileTooLarge, IllegalArgument, or NoMoreSpace.
+	// If the file is open for reading only, returns WrongMode.
+	// Possible errors are IOError, WrongMode, InactiveFD, TryAgain, FileTooLarge, IllegalArgument, or NoMoreSpace.
 	// If err is non-nil, bytesWritten is -1.
 	Write(fileDescriptor int, numBytes int, data []byte) (bytesWritten int, err error)
 
@@ -116,6 +121,20 @@ const (
 // Specifially, checks whether sets of flags a and b have any overlap.
 func FlagIsSet(a, b OpenFlags) bool {
 	return (a & b) != 0
+}
+
+func (o OpenFlags) String() string {
+	setFlags := make([]string, 0)
+	if FlagIsSet(o, Create) {
+		setFlags = append(setFlags, "Create")
+	}
+	if FlagIsSet(o, Append) {
+		setFlags = append(setFlags, "Append")
+	}
+	if FlagIsSet(o, Truncate) {
+		setFlags = append(setFlags, "Truncate")
+	}
+	return strings.Join(setFlags, "|")
 }
 
 type SeekMode int

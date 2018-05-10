@@ -33,17 +33,33 @@ func CreateEmptyMemoryFS() MemoryFS {
 // Operations from FileSystem =================================================
 
 // See the spec for FileSystem::Mkdir.
-func (mfs *MemoryFS) Mkdir(path string) (success bool, err error) {
-	panic("TODO")
+func (mfs *MemoryFS) Mkdir(filePath string) (success bool, err error) {
+	ad.Debug(ad.TRACE, "Starting Mkdir(%v)", filePath)
+	success = false // in case we return early, set it here
+	currentDir, _, newDirName, existence := mfs.followPath(filePath)
+	switch existence {
+	case NodeExists:
+		err = filesystem.AlreadyExists
+	case ParentExistsButNodeDoesNot:
+		// true for directory instead of file
+		currentDir.createChild(newDirName, true)
+		success = true
+	case ParentDoesNotExist:
+		err = filesystem.NotFound
+	}
+
+	ad.Debug(ad.TRACE, "Done with Mkdir(%v), returning (%t, %v)", filePath, success, err)
+	return // Needed for compilation
 }
 
 // See the spec for FileSystem::Open.
 func (mfs *MemoryFS) Open(filePath string, mode filesystem.OpenMode, flags filesystem.OpenFlags) (fileDescriptor int, err error) {
 	ad.Debug(ad.TRACE, "Starting Open(%v, %v, %v)", filePath, mode.String(), flags)
+	// We have to have the "Done with Open" debug on every return, we can't defer it, because parameters to a deferred
+	// function are evaluated at defer time, not at call time.
 	fileDescriptor = -1 // in case we return early, set it here
 
 	currentDir, node, fileName, existence := mfs.followPath(filePath)
-	ad.Debug(ad.TRACE, "Got currentDir=%+v, node=%+v, fileName=%v, existence=%v", currentDir, node, fileName, existence)
 
 	switch existence {
 	case NodeExists:
@@ -52,14 +68,17 @@ func (mfs *MemoryFS) Open(filePath string, mode filesystem.OpenMode, flags files
 	case ParentExistsButNodeDoesNot:
 		if filesystem.FlagIsSet(flags, filesystem.Create) {
 			currentDir.CreateFile(fileName)
-			node = currentDir.GetChildNamed(fileName) // because node was set to nil before because it didn't exist
+			// Set node here because node was set to nil above because it didn't exist
+			node = currentDir.GetChildNamed(fileName)
 		} else {
 			err = filesystem.NotFound
+			ad.Debug(ad.TRACE, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
 			return
 		}
 
 	case ParentDoesNotExist:
 		err = filesystem.NotFound
+		ad.Debug(ad.TRACE, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
 		return
 	}
 
@@ -67,12 +86,16 @@ func (mfs *MemoryFS) Open(filePath string, mode filesystem.OpenMode, flags files
 	ad.Assert(node != nil)
 	if !isFile {
 		err = filesystem.IsDirectory
+		ad.Debug(ad.TRACE, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
 		return
 	}
 
 	errFromFile := file.Open(mode, flags)
 	if errFromFile != nil {
-		return -1, errFromFile
+		fileDescriptor = -1
+		err = errFromFile
+		ad.Debug(ad.TRACE, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
+		return
 	}
 
 	// and now to assign it to a file descriptor
@@ -90,6 +113,7 @@ func (mfs *MemoryFS) Open(filePath string, mode filesystem.OpenMode, flags files
 			mfs.smallestAvailableFD = fileDescriptor
 			fileDescriptor = -1
 			err = filesystem.TooManyFDsOpen
+			ad.Debug(ad.TRACE, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
 			return
 		} else {
 			// we've found our new smallestAvailableFD
@@ -97,7 +121,7 @@ func (mfs *MemoryFS) Open(filePath string, mode filesystem.OpenMode, flags files
 		}
 	}
 
-	ad.Debug(ad.TRACE, "Done with Open(%v, %v, %v)", filePath, mode.String(), flags)
+	ad.Debug(ad.TRACE, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
 	return // this is necessary for compilation, idk why
 }
 
@@ -106,17 +130,23 @@ func (mfs *MemoryFS) Close(fileDescriptor int) (success bool, err error) {
 	ad.Debug(ad.TRACE, "Closing FD %v", fileDescriptor)
 	file, fdIsActive := mfs.activeFDs[fileDescriptor]
 	if !fdIsActive {
-		return false, filesystem.InactiveFD
+		success = false
+		err = filesystem.InactiveFD
+		ad.Debug(ad.TRACE, "Done closing FD %v, returning (%t, %v)", fileDescriptor, success, err)
+		return
 	}
+
 	success, err = file.Close()
+
 	if success {
 		ad.Assert(err == nil)
 		delete(mfs.activeFDs, fileDescriptor)
 	}
+	// Maintain the invariant that smallestAvailableFD is actually the smallest
 	if fileDescriptor < mfs.smallestAvailableFD {
 		mfs.smallestAvailableFD = fileDescriptor
 	}
-	ad.Debug(ad.TRACE, "Done closing FD %v", fileDescriptor)
+	ad.Debug(ad.TRACE, "Done closing FD %v, returning (%t, %v)", fileDescriptor, success, err)
 	return
 }
 
@@ -126,16 +156,9 @@ func (mfs *MemoryFS) Seek(fileDescriptor int, offset int, base filesystem.SeekMo
 	if !fdIsActive {
 		return -1, filesystem.InactiveFD
 	}
-	if base < 0 || base > 2 { // man lseek - EINVAL
-		return -1, filesystem.IllegalArgument
-	}
-	if offset < 0 { // man lseek - EINVAL
-		return -1, filesystem.IllegalArgument
-	}
-	curOffset, err := file.Seek(offset, base)
-	// ...
-	ad.Debug(ad.TRACE, "FD %d seek complete - offset now %d", fileDescriptor, curOffset)
-	return curOffset, nil
+	newPosition, err = file.Seek(offset, base)
+	ad.Debug(ad.TRACE, "FD %d seek complete - offset now %d", fileDescriptor, newPosition)
+	return
 }
 
 // See the spec for FileSystem::Read.
@@ -223,7 +246,7 @@ func (mfs *MemoryFS) followPath(filePath string) (parentDir *Directory, node Nod
 		return currentDir, nil, nodeName, ParentExistsButNodeDoesNot
 	}
 
-	ad.Debug(ad.TRACE, "Node exists", nodeName)
+	ad.Debug(ad.TRACE, "Node %s exists", nodeName)
 	return currentDir, currentDir.GetChildNamed(nodeName), nodeName, NodeExists
 }
 

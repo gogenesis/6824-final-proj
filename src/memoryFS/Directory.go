@@ -47,6 +47,7 @@ func (dir *Directory) createChild(childName string, isDirectory bool) Node {
 		// Create it with type Directory so we can access private field inode temporarily
 		dir := &Directory{}
 		dir.inode = inode
+		dir.children = make(map[string]Node, 0)
 		node = dir
 	} else {
 		file := &File{}
@@ -94,5 +95,6 @@ func (dir *Directory) GetChildNamed(childName string) Node {
 
 // See FileSystem::Delete.
 func (dir *Directory) Delete() (success bool, err error) {
+	ad.AssertExplain(len(dir.children) == 0, "Cannot delete a non-empty directory!")
 	return dir.inode.Delete()
 }
