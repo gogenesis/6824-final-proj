@@ -82,8 +82,6 @@ func (file *File) Read(numBytes int) (bytesRead int, data []byte, err error) {
 
 // See FileSystem::Write.
 func (file *File) Write(numBytes int, data []byte) (bytesWritten int, err error) {
-	ad.AssertExplain(numBytes == len(data), "bad numBytes %d vs len(data) %d",
-		numBytes, len(data))
 	// grow file as needed, leaving holes >EOF written
 	if file.offset+numBytes > len(file.contents) {
 		ad.Debug(ad.RPC, "growing file - offset %d numBytes %d len(contents) %d",
