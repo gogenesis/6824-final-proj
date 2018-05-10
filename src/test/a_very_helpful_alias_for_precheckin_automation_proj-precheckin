@@ -1,0 +1,1 @@
+alias proj-precheckin="export DFS_DEFAULT_DEBUG_LEVEL=2; cd /home/taylor/git/6824-final-proj/src && go fmt ./filesystem && go fmt ./memoryFS && cd main && ./generate_all_tests.sh && time ../test/run_precheckin_tests.sh"
