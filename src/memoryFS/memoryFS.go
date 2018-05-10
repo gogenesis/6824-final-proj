@@ -193,15 +193,15 @@ func (mfs *MemoryFS) Delete(filePath string) (success bool, err error) {
 	case ParentExistsButNodeDoesNot:
 		fallthrough
 	case ParentDoesNotExist:
-		success =false
-		err =filesystem.NotFound
+		success = false
+		err = filesystem.NotFound
 		ad.Debug(ad.TRACE, "Done with Delete(%v), returning (%t, %s)", filePath, success, err)
 		return
 	}
 
 	dir, nodeIsDirectory := node.(*Directory)
 	if nodeIsDirectory && len(dir.children) > 0 {
-		success =false
+		success = false
 		err = filesystem.DirectoryNotEmpty
 		ad.Debug(ad.TRACE, "Done with Delete(%v), returning (%t, %s)", filePath, success, err)
 		return

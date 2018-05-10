@@ -186,7 +186,7 @@ func (fs *FileServer) applyChMonitorThread() {
 				if containsKey {
 					ad.DebugObj(fs, ad.TRACE, "Routing RPC reply OK to %v %d", clerkShortName(opArgs.ClerkId), opArgs.ClerkIndex)
 					opInProgress.resultChannel <- OperationReply{returnValue, OK}
-					delete(fs.operationsInProgress, opArgs)
+					delete(fs.operationsInProgress, &opArgs)
 				} else {
 					clientsInProgressShortNames := make([]string, len(fs.operationsInProgress))
 					for otherOperationArgs := range fs.operationsInProgress {

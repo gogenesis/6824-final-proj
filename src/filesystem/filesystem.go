@@ -86,7 +86,6 @@ type FileSystem interface {
 	//func (ck *FSClerk) Duplicate(fileDescriptor int) (newFileDescriptor int, err error) { panic("Not supported.") }
 }
 
-
 // The maximum number of file descriptors that can be active.
 const MaxActiveFDs = 128
 
