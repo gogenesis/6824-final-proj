@@ -12,12 +12,17 @@ type Node interface {
 	// Delete this Node.
 	// success == true iff err == nil.
 	Delete() (success bool, err error)
+
+	// The parent of this Node.
+	// Nil if and only if this is the root directory.
+	Parent() *Directory
 }
 
 // An "abstract class" to hold shared implementations of the functions in Node.
 // Like File and Directory, *Inode implements Node but Inode (no pointer) does not.
 type Inode struct {
-	name string
+	name   string
+	parent *Directory
 }
 
 func (in *Inode) Name() string {
@@ -26,6 +31,12 @@ func (in *Inode) Name() string {
 
 func (in *Inode) Delete() (success bool, err error) {
 	ad.Debug(ad.TRACE, "Deleting %v", in.Name())
-	// nothing else necessary
+	// If this was the root directory, this would have been stopped earlier
+	ad.Assert(in.parent != nil)
+	delete(in.Parent().children, in.Name())
 	return
+}
+
+func (in *Inode) Parent() *Directory {
+	return in.parent
 }

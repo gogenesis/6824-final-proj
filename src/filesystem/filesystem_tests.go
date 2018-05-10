@@ -68,6 +68,7 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestMkdirNotFound,
 	TestMkdirAlreadyExists,
 	TestRndWriteReadVerfiyHoleExpansion,
+	TestCannotDeleteRootDir,
 }
 
 func HelpVerifyBytes(t *testing.T, a []byte, b []byte, msg string) {
@@ -506,18 +507,9 @@ func TestSeekErrorBadOffsetOperation(t *testing.T, fs FileSystem) {
 	filename := "/bad-offset-operation.txt"
 	fd := HelpOpen(t, fs, filename, ReadWrite, Create)
 
-	// Enforce only one option
-	_, err := fs.Seek(fd, 0, -1)
-	ad.AssertExplainT(t, err == IllegalArgument, "illegal seek mode wrong err")
-	_, err = fs.Seek(fd, 0, 3)
-	ad.AssertExplainT(t, err == IllegalArgument, "illegal seek mode wrong err")
-
-	_, err = fs.Seek(fd, 0, FromCurrent)
-	ad.AssertExplainT(t, err == nil, "illegal seek mode err")
-	_, err = fs.Seek(fd, 0, 2)
-	ad.AssertExplainT(t, err == nil, "illegal seek mode err")
-	HelpClose(t, fs, fd)
-	HelpDelete(t, fs, filename)
+	_, err := fs.Seek(fd, -1, FromBeginning)
+	ad.AssertExplainT(t, err == IllegalArgument, "Attempted to Seek to before the beginning of a file. "+
+		"Expected IllegalArgument error, got %v", err)
 }
 
 func TestSeekOffEOF(t *testing.T, fs FileSystem) {
@@ -706,7 +698,7 @@ func TestRndWriteReadVerfiyHoleExpansion(t *testing.T, fs FileSystem) {
 	fd := HelpOpen(t, fs, "/few-holey-bytes.txt", ReadWrite, Create)
 	nBytes := 64
 	shore := HelpMakeRndBytes(t, nBytes)      // 64 random bytes
-	HelpWriteBytes(t, fs, fd, shore)  // offset now 64
+	HelpWriteBytes(t, fs, fd, shore)          // offset now 64
 	HelpSeek(t, fs, fd, 0, FromBeginning)     // offset now 0
 	_, shoreRd := HelpRead(t, fs, fd, nBytes) // offset now 64
 	HelpVerifyBytes(t, shore, shoreRd, "shore integrity")
@@ -796,4 +788,12 @@ func TestOpenCloseDeleteAcrossDirectories(t *testing.T, fs FileSystem) {
 	HelpDelete(t, fs, "/dir1")
 	HelpDelete(t, fs, "/dir2")
 	HelpDelete(t, fs, "/dir3")
+}
+
+func TestCannotDeleteRootDir(t *testing.T, fs FileSystem) {
+	success, err := fs.Delete("/")
+	ad.AssertExplainT(t, !success, "Attempted to delete the root directory of a filesystem, expected success=false, "+
+		"got success=true.")
+	ad.AssertExplainT(t, err == IllegalArgument, "Attempted to delete the root directory of a filesystem, expected "+
+		"IllegalArgument error, got %s", err)
 }

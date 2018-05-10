@@ -24,7 +24,8 @@ func CreateEmptyMemoryFS() MemoryFS {
 		rootDir:             Directory{},
 	}
 	mfs.rootDir.inode = Inode{
-		name: "",
+		name:   "",
+		parent: nil,
 	}
 	mfs.rootDir.children = make(map[string]Node)
 	return mfs
@@ -182,7 +183,6 @@ func (mfs *MemoryFS) Write(fileDescriptor int, numBytes int, data []byte) (bytes
 // See the spec for FileSystem::Delete.
 func (mfs *MemoryFS) Delete(filePath string) (success bool, err error) {
 	ad.Debug(ad.TRACE, "Starting Delete(%v)", filePath)
-	defer ad.Debug(ad.TRACE, "Done with Delete(%v)", filePath)
 
 	currentDir, node, nodeName, existence := mfs.followPath(filePath)
 	ad.Debug(ad.TRACE, "Got currentDir=%+v, node=%+v, nodeName=%v, existence=%v", currentDir, node, nodeName, existence)
@@ -193,15 +193,22 @@ func (mfs *MemoryFS) Delete(filePath string) (success bool, err error) {
 	case ParentExistsButNodeDoesNot:
 		fallthrough
 	case ParentDoesNotExist:
-		return false, filesystem.NotFound
+		success =false
+		err =filesystem.NotFound
+		ad.Debug(ad.TRACE, "Done with Delete(%v), returning (%t, %s)", filePath, success, err)
+		return
 	}
 
 	dir, nodeIsDirectory := node.(*Directory)
 	if nodeIsDirectory && len(dir.children) > 0 {
-		return false, filesystem.DirectoryNotEmpty
+		success =false
+		err = filesystem.DirectoryNotEmpty
+		ad.Debug(ad.TRACE, "Done with Delete(%v), returning (%t, %s)", filePath, success, err)
+		return
 	}
 
 	node.Delete()
+	ad.Debug(ad.TRACE, "Done with Delete(%v), returning (%t, %s)", filePath, success, err)
 	return true, nil
 }
 

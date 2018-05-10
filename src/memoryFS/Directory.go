@@ -43,6 +43,9 @@ func (dir *Directory) createChild(childName string, isDirectory bool) Node {
 
 	var node Node
 	var inode Inode
+	// Initialize fields
+	inode.name = childName
+	inode.parent = dir
 	if isDirectory {
 		// Create it with type Directory so we can access private field inode temporarily
 		dir := &Directory{}
@@ -55,9 +58,6 @@ func (dir *Directory) createChild(childName string, isDirectory bool) Node {
 		file.isOpen = false
 		node = file
 	}
-
-	// Initialize parameters
-	inode.name = childName
 
 	// Finish up
 	dir.children[childName] = node
@@ -97,4 +97,8 @@ func (dir *Directory) GetChildNamed(childName string) Node {
 func (dir *Directory) Delete() (success bool, err error) {
 	ad.AssertExplain(len(dir.children) == 0, "Cannot delete a non-empty directory!")
 	return dir.inode.Delete()
+}
+
+func (dir *Directory) Parent() *Directory {
+	return dir.inode.Parent()
 }

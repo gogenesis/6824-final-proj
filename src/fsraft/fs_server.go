@@ -28,7 +28,7 @@ type FileServer struct {
 	thinksRaftTermIs   int                // what it thinks the term of the underlying Raft peer is
 
 	memoryFS                 memoryFS.MemoryFS // The actual filesystem stored on this server
-	operationsInProgress     map[OperationArgs]OperationInProgress
+	operationsInProgress     map[*OperationArgs]OperationInProgress
 	clerkCommandsExecuted    map[int64]int //clerkCommandsExecuted[clerk serial number] = last command index of a command from that clerk
 	lastCommandIndexExecuted int           // total number of commands executed. Equal to the sum of values in clerkCommandsExecuted.
 }
@@ -74,7 +74,7 @@ func StartFileServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persis
 	fs.thinksRaftTermIs = 0
 
 	fs.memoryFS = memoryFS.CreateEmptyMemoryFS()
-	fs.operationsInProgress = make(map[OperationArgs]OperationInProgress)
+	fs.operationsInProgress = make(map[*OperationArgs]OperationInProgress)
 	fs.clerkCommandsExecuted = make(map[int64]int)
 	fs.lastCommandIndexExecuted = 0
 
@@ -116,7 +116,7 @@ func (fs *FileServer) Operation(args *OperationArgs, reply *OperationReply) {
 
 	// unbuffered because I'll be waiting whenever someone sends on this channel
 	resultChannel := make(chan OperationReply)
-	fs.operationsInProgress[*args] = OperationInProgress{*args, expectedIndex, resultChannel}
+	fs.operationsInProgress[args] = OperationInProgress{*args, expectedIndex, resultChannel}
 	ad.DebugObj(fs, ad.RPC, "Started %v for %v %d", args.AbstractOperation.String(), clerkShortName(args.ClerkId), args.ClerkIndex)
 	fs.lock.Unlock()
 
@@ -159,7 +159,7 @@ func (fs *FileServer) applyChMonitorThread() {
 				fs.updateTermAndLeadership()
 
 				// if this applyMsg is for a client who has an operation in progress with us
-				opInProgress, containsKey := fs.operationsInProgress[opArgs]
+				opInProgress, containsKey := fs.operationsInProgress[&opArgs]
 
 				if containsKey {
 					// Maybe lose leadership. If a different command has appeared at the index returned by Start

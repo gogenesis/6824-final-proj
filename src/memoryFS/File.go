@@ -129,3 +129,7 @@ func (file *File) Write(numBytes int, data []byte) (bytesWritten int, err error)
 func (file *File) Delete() (success bool, err error) {
 	return file.inode.Delete()
 }
+
+func (file *File) Parent() *Directory {
+	return file.inode.Parent()
+}

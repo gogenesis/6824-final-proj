@@ -75,7 +75,8 @@ type FileSystem interface {
 	//
 	// If the name is a file, the file is deleted and the space it was using is made available for reuse.
 	// If the name is a directory, deletes it if it is empty or otherwise returns DirectoryNotEmpty.
-	// Possible errors are NotFound, DirectoryNotEmpty, TryAgain, or IOError.
+	// Calling Delete("/") results in an IllegalArgument error.
+	// Possible errors are NotFound, IllegalArgument, DirectoryNotEmpty, TryAgain, or IOError.
 	// Success is false if and only if err is non-nil.
 	Delete(path string) (success bool, err error)
 
@@ -84,6 +85,7 @@ type FileSystem interface {
 	// This function is not yet supported, so the spec is incomplete.
 	//func (ck *FSClerk) Duplicate(fileDescriptor int) (newFileDescriptor int, err error) { panic("Not supported.") }
 }
+
 
 // The maximum number of file descriptors that can be active.
 const MaxActiveFDs = 128
