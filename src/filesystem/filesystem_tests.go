@@ -14,11 +14,21 @@ import (
 // by creating a unit test suite for your implementation class that calls these tests.
 
 func HelpVerifyBytes(t *testing.T, a []byte, b []byte, msg string) {
-   ad.AssertExplainT(t, len(a) == len(b), "len(a) %d != len(b) %d", len(a), len(b))
-   for i := 0; i < len(a); i++ {
-	   ad.AssertExplainT(t, a[i] == b[i], msg, i, a[i], b[i])
-   }
+	ad.AssertExplainT(t, len(a) == len(b), "len(a) %d != len(b) %d", len(a), len(b))
+	for i := 0; i < len(a); i++ {
+		ad.AssertExplainT(t, a[i] == b[i], "%s ; i=%d (%d vs %d)",
+			msg, i, a[i], b[i])
+	}
 }
+
+func HelpMakeZeros(t *testing.T, n int) []byte {
+	zeros := make([]byte, n)
+	for i := 0; i < len(zeros); i++ {
+		zeros[i] = 0
+	}
+	return zeros
+}
+
 // ===== BEGIN OPEN CLOSE DELETE HELPERS =====
 
 func HelpDelete(t *testing.T, fs FileSystem,
@@ -139,7 +149,7 @@ func HelpWrite(t *testing.T, fs FileSystem,
 // error checked helper
 func HelpReadWrite(t *testing.T, fs FileSystem,
 	path string, strData string) int {
-   contents := []byte(strData)
+	contents := []byte(strData)
 	fd := HelpOpen(t, fs, path, ReadWrite, Create)
 	HelpSeek(t, fs, fd, 0, FromBeginning)
 	nBytes := HelpWrite(t, fs, fd, len(contents), contents)
@@ -196,12 +206,13 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestRndWriteRead64KBIter1MB,
 	TestRndWriteRead64KBIter10MB,
 	TestRndWriteRead1MBIter100MB,
-   TestRndWriteReadFewHoleyBytes,
-	// ========= the line in the sand =======
-	//TestMkdir,
-	//TestMkdirTree,
-	//TestOpenCloseDeleteAcrossDirectories,
+	TestRndWriteReadVerfiyHoleExpansion,
 }
+
+// ========= the line in the sand =======
+//TestMkdir,
+//TestMkdirTree,
+//TestOpenCloseDeleteAcrossDirectories,
 
 var testNames = []string{
 	"TestBasicOpenClose",
@@ -241,22 +252,37 @@ var testNames = []string{
 	"TestRndWriteRead64KBIter1MB",
 	"TestRndWriteRead64KBIter10MB",
 	"TestRndWriteRead1MBIter100MB",
-	"TestMkdir",
-	"TestMkdirTree",
-	"TestOpenCloseDeleteAcrossDirectories",
+	"TestRndWriteReadVerfiyHoleExpansion",
 }
+
+// ===== the line in the sand =====
+// "TestMkdir",
+//	"TestMkdirTree",
+//	"TestOpenCloseDeleteAcrossDirectories",
 
 // should save countless hours messing with Jenkinsfile.
 // eventually could automate the generation and push of the entire Jenkinsfile.
 func TestHelpGenerateJenkinsPipeline(t *testing.T, fs FileSystem) {
-	moduleStr := "MemoryFS"
-	//TODO timestamp the generation ... share with D's raft test case generation code eventually
+	//Core MemoryFS
+	combName := "MemoryFS"
 	for i := 0; i < len(testNames); i++ {
-		print(fmt.Sprintf(" stage('DB3 TestMemoryFS_%s') {\n", testNames[i]))
+		print(fmt.Sprintf(" stage('DB3 Test%s_%s') {\n", combName, testNames[i]))
 		print("\t\tsteps {\n")
 		print("\t\t\tscript {\n")
-		print(fmt.Sprintf("\t\t\t\tsh 'THA_GO_DEBUG=3 DFS_DEFAULT_DEBUG_LEVEL=3 "+ //ugly ... break string into local vars eventually
-			"GO_TEST_PKG=Test%s_%s /volumes/babtin-volume/babtin/babtin/jenkins_dse_debug_optimized.sh 1 1 1 1'\n", moduleStr, testNames[i]))
+		print(fmt.Sprintf("\t\t\t\tsh '"+ //ugly ... break string into local vars eventually
+			"GO_TEST_PKG=Test%s_%s /volumes/babtin-volume/babtin/babtin/jenkins_dse_debug_optimized.sh 1 1 1 1'\n", combName, testNames[i]))
+		print("\t\t\t}\n")
+		print("\t\t}\n")
+		print("\t}\n")
+	}
+	//TestClerk_OneClerkThreeServersNoErrors
+	combName = "Clerk_OneClerkThreeServersNoErrors"
+	for i := 0; i < len(testNames); i++ {
+		print(fmt.Sprintf(" stage('DB3 Test%s_%s') {\n", combName, testNames[i]))
+		print("\t\tsteps {\n")
+		print("\t\t\tscript {\n")
+		print(fmt.Sprintf("\t\t\t\tsh '"+ //ugly ... break string into local vars eventually
+			"GO_TEST_SRC=$GOPATH/src/fsraft GO_TEST_PKG=Test%s_%s /volumes/babtin-volume/babtin/babtin/jenkins_dse_debug_optimized.sh 1 1 1 1'\n", combName, testNames[i]))
 		print("\t\t\t}\n")
 		print("\t\t}\n")
 		print("\t}\n")
@@ -531,7 +557,7 @@ func TestRndWriteReadNBytesIter(t *testing.T, fs FileSystem,
 	fd := HelpOpen(t, fs, fileName, ReadWrite, Create)
 	dataIn := make([]byte, 0)
 	for i := 0; i < iters; i++ {
-      //@dedup
+		//@dedup
 		dataIn = HelpMakeRndBytes(t, nBytes)
 		ad.AssertExplainT(t, len(dataIn) == nBytes, "made %d len array", len(dataIn))
 		nWr, err := fs.Write(fd, nBytes, dataIn)
@@ -600,46 +626,45 @@ func TestRndWriteRead1MBIter100MB(t *testing.T, fs FileSystem) {
 	TestRndWriteReadNBytesIter(t, fs, "/r-1MB-iter-100M.txt", 1000000, 10)
 }
 
+func TestRndWriteReadVerfiyHoleExpansion(t *testing.T, fs FileSystem) {
+	fd := HelpOpen(t, fs, "/few-holey-bytes.txt", ReadWrite, Create)
+	nBytes := 64
+	shore := HelpMakeRndBytes(t, nBytes)      // 64 random bytes
+	HelpWrite(t, fs, fd, nBytes, shore)       // offset now 64
+	HelpSeek(t, fs, fd, 0, FromBeginning)     // offset now 0
+	_, shoreRd := HelpRead(t, fs, fd, nBytes) // offset now 64
+	HelpVerifyBytes(t, shore, shoreRd, "shore integrity")
 
-func TestRndWriteReadFewHoleyBytes(t *testing.T, fs FileSystem) {
-   fd := HelpOpen(t, fs, "/few-holey-bytes.txt", ReadWrite, Create)
-   nBytes := 64
-   shore := HelpMakeRndBytes(t, nBytes)                                         // 64 random bytes
-   HelpWrite(t, fs, fd, nBytes, shore)                                          // offset now 64
-   HelpSeek(t, fs, fd, 0, FromBeginning)                                        // offset now 0
-   _, shoreRd := HelpRead(t, fs, fd, nBytes)                                    // offset now 64
-   HelpVerifyBytes(t, shore, shoreRd, "shore integrity; i=%d (%d vs %d)")
+	// seek past EOF leaving 64 byte hole
+	HelpSeek(t, fs, fd, 128, FromBeginning) // offset now 128 leaving 64 byte gap
+	// write another few bytes to make an island
+	nBytes = 128
+	island := HelpMakeRndBytes(t, nBytes)
+	fs.Write(fd, nBytes, island) // offset now 256 leaving 128 rnd byte island
 
-                                                                                //                 64 byte hole 128                      256
-   // seek past EOF                                                             // ----- 64 bytes |              | island                 |
-   nBytes = 128
-   HelpSeek(t, fs, fd, 64, FromBeginning)                                       // offset now 128 leaving 64 byte gap
-   // write another few bytes to make an island
-   island := HelpMakeRndBytes(t, nBytes)
-   fs.Write(fd, nBytes, island)                                                 // offset now 256 leaving 128 rnd byte island
-   HelpSeek(t, fs, fd, 0, FromBeginning)                                        // offset now 0   
+	HelpSeek(t, fs, fd, 0, FromBeginning) // offset now 0
+	nBytes = 64
+	_, shoreRd = HelpRead(t, fs, fd, nBytes) // offset now 64 (beginning of hole)
+	HelpVerifyBytes(t, shore, shoreRd, "shore deviation")
 
-   nBytes = 64
-   _, shoreRd = HelpRead(t, fs, fd, nBytes)                                     // offset now 64 (beginning of hole)
-   HelpVerifyBytes(t, shore, island, "1st island deviation")
-   // verify the zero filled hole appeared
-   _, holeRd := HelpRead(t, fs, fd, nBytes)                                     // offset now 128 (end of hole / beginning of island)
-   HelpVerifyBytes(t, make([]byte, nBytes), holeRd, "hole deviation")
+	// verify the zero filled hole appeared
+	_, holeRd := HelpRead(t, fs, fd, nBytes) // offset now 128 (end of hole / beginning of island)
+	HelpVerifyBytes(t, HelpMakeZeros(t, 64), holeRd, "hole deviation")
 
-   // verify island
-   _, islandRd := HelpRead(t, fs, fd, 64)                                       // offset now 128 
-   HelpVerifyBytes(t, island, islandRd, "2nd island deviation")
+	// verify island
+	_, islandRd := HelpRead(t, fs, fd, 128) // offset now 256
+	HelpVerifyBytes(t, island, islandRd, "island deviation")
 
-   // PUT IN OWN TEST EVENTUALLY
-   // verify read past EOF results in 0 bytes read
-   nRd, data := HelpRead(t, fs, fd, 1)                                          // seek past EOF at 257
-   ad.AssertExplainT(t, nRd == 0, "EOF read %d", nRd)
-   ad.AssertExplainT(t, len(data) == 0, "EOF len(data) %d", len(data))
+	// PUT IN OWN TEST EVENTUALLY
+	// verify read past EOF results in 0 bytes read
+	nRd, data, err := fs.Read(fd, 1) // seek past EOF at 257
+	ad.AssertExplainT(t, nRd == 0, "EOF read %d", nRd)
+	ad.AssertExplainT(t, len(data) == 0, "EOF len(data) %d", len(data))
+	ad.AssertExplainT(t, err == nil, "EOF read err %s", err)
 
-   fs.Close(fd)
-   fs.Delete("/few-holey-bytes.txt")
+	fs.Close(fd)
+	fs.Delete("/few-holey-bytes.txt")
 }
-
 
 // ===== THE LINE IN THE SAND ==========
 // TOMORROW: Wed 5/9/18

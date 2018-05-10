@@ -66,6 +66,7 @@ main () {
 	  run_test "TestMemoryFS_TestWriteRead64KBIter1MB"
 	  run_test "TestMemoryFS_TestWriteRead64KBIter10MB"
 	  run_test "TestMemoryFS_TestWriteRead1MBIter100MB"
+	  run_test "TestMemoryFS_TestRndWriteReadVerfiyHoleExpansion"
 
 	  # ======= the line in the sand ======
 
