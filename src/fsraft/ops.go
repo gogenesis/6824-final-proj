@@ -62,7 +62,7 @@ func (ab *AbstractOperation) String() string {
 	case OpenOp:
 		args = fmt.Sprintf("%v, %v, %v", ab.Path, ab.OpenMode, ab.OpenFlags)
 	case CloseOp:
-		args = string(ab.FileDescriptor)
+		args = fmt.Sprintf("%d", ab.FileDescriptor)
 	case SeekOp:
 		args = fmt.Sprintf("%v, %v, %v", ab.FileDescriptor, ab.Offset, ab.Base)
 	case ReadOp:

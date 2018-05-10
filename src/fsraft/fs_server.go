@@ -29,8 +29,9 @@ type FileServer struct {
 
 	memoryFS                 memoryFS.MemoryFS // The actual filesystem stored on this server
 	operationsInProgress     map[OpArgsHash]OperationInProgress
-	clerkCommandsExecuted    map[int64]int //clerkCommandsExecuted[clerk serial number] = last command index of a command from that clerk
-	lastCommandIndexExecuted int           // total number of commands executed. Equal to the sum of values in clerkCommandsExecuted.
+	clerkCommandsExecuted    map[int64]int                   //clerkCommandsExecuted[clerk serial number] = last command index of a command from that clerk
+	lastCommandIndexExecuted int                             // total number of commands executed. Equal to the sum of values in clerkCommandsExecuted.
+	cachedReplies            map[int64]map[int][]interface{} // Map<Clerk ID, Map<Clerk index, result>>
 }
 
 // Clerk-facing API ====================================================================================================
@@ -72,6 +73,7 @@ func StartFileServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persis
 	fs.operationsInProgress = make(map[OpArgsHash]OperationInProgress)
 	fs.clerkCommandsExecuted = make(map[int64]int)
 	fs.lastCommandIndexExecuted = 0
+	fs.cachedReplies = make(map[int64]map[int][]interface{})
 
 	go fs.applyChMonitorThread()
 	go fs.stateUpdaterThread()
@@ -119,6 +121,10 @@ func (fs *FileServer) Operation(args *OperationArgs, reply *OperationReply) {
 
 	fs.lock.Lock()
 	defer fs.lock.Unlock()
+
+	if result.Status == OK {
+		ad.AssertExplain(len(result.ReturnValue) > 0, "Got a Reply that is OK but with an empty returnValue!")
+	}
 
 	// Copy fields because the OperationReply we get out of the channel is a // different object than
 	// the OperationReply the client is expecting to get mutated.
@@ -226,7 +232,6 @@ func (fs *FileServer) stateUpdaterThread() {
 // Private helper methods ==============================================================================================
 
 func (fs *FileServer) execute(ab AbstractOperation, clerkId int64, clerkIndex int, commandIndex int) []interface{} {
-	// Don't just return from here because we might execute a duplicate op anyway if it's a GetOp
 	isDuplicate := false
 	duplicateReason := ""
 	if clerkIndex <= fs.clerkCommandsExecuted[clerkId] {
@@ -250,22 +255,29 @@ func (fs *FileServer) execute(ab AbstractOperation, clerkId int64, clerkIndex in
 	fs.lastCommandIndexExecuted += 1
 
 	if !isDuplicate {
-		// Don't skip commands from a clerk
+		// Don't skip commands from a clerk and execute commands in order
 		ad.AssertEquals(fs.clerkCommandsExecuted[clerkId]+1, clerkIndex)
 		fs.clerkCommandsExecuted[clerkId] += 1
-	}
 
-	// All methods mutate the memoryFS, so never execute duplicates.
-	// (The code is structured like this because in lab 3 the correct behavior was to
-	// execute duplicate ops iff they were Gets, and the code is copied from there).
-	if !isDuplicate {
-
-		returnValue := fs.performAbstractOperation(ab)
 		ad.DebugObj(fs, ad.RPC, "Executing %v for %v %v.", ab.String(), clerkShortName(clerkId), clerkIndex)
+		returnValue := fs.performAbstractOperation(ab)
+
+		// add it to the cache
+		clerkCache, clerkCacheExists := fs.cachedReplies[clerkId]
+		if !clerkCacheExists {
+			clerkCache = make(map[int][]interface{})
+			fs.cachedReplies[clerkId] = clerkCache
+		}
+		clerkCache[clerkIndex] = returnValue
+
 		return returnValue
 	} else {
-		ad.DebugObj(fs, ad.TRACE, "Skipping duplicate command %+v for %v %d because %v", ab, clerkShortName(clerkId), clerkIndex, duplicateReason)
-		return []interface{}{}
+		returnValue := fs.cachedReplies[clerkId][clerkIndex]
+		ad.AssertExplain(len(returnValue) > 0, "Got empty ReturnValue out of the cache! Was searching for clerkId=%d " +
+			"and clerkIndex=%d, cache is %+v", clerkId, clerkIndex, fs.cachedReplies)
+		ad.DebugObj(fs, ad.TRACE, "Skipping duplicate command %+v for %v %d because %v. Returning %v from the cache.",
+			ab, clerkShortName(clerkId), clerkIndex, duplicateReason, returnValue)
+		return returnValue
 	}
 }
 
@@ -292,9 +304,7 @@ func (fs *FileServer) performAbstractOperation(ab AbstractOperation) []interface
 		bytesRead, data, err := fs.memoryFS.Read(ab.FileDescriptor, ab.NumBytes)
 		return []interface{}{bytesRead, data, err}
 	case WriteOp:
-		// The "[:]" is necessary to convert the fixed-length array into a slice that the memoryfs will accept.
-		// Unlike Python, it does not create a copy of the underlying data.
-		bytesWritten, err := fs.memoryFS.Write(ab.FileDescriptor, ab.NumBytes, ab.Data[:])
+		bytesWritten, err := fs.memoryFS.Write(ab.FileDescriptor, ab.NumBytes, ab.Data)
 		return []interface{}{bytesWritten, err}
 	case DeleteOp:
 		success, err := fs.memoryFS.Delete(ab.Path)
@@ -424,4 +434,3 @@ func (fs *FileServer) DebugPrefix() string {
 
 	return fmt.Sprintf("S%v %v%d %d", fs.me, thinksElectionStr, fs.thinksRaftTermIs, fs.lastCommandIndexExecuted)
 }
-

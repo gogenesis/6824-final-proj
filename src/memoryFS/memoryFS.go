@@ -49,7 +49,7 @@ func (mfs *MemoryFS) Mkdir(filePath string) (success bool, err error) {
 		err = filesystem.NotFound
 	}
 
-	ad.Debug(ad.TRACE, "Done with Mkdir(%v), returning (%t, %v)", filePath, success, err)
+	ad.Debug(ad.RPC, "Done with Mkdir(%v), returning (%t, %v)", filePath, success, err)
 	return // Needed for compilation
 }
 
@@ -73,13 +73,13 @@ func (mfs *MemoryFS) Open(filePath string, mode filesystem.OpenMode, flags files
 			node = currentDir.GetChildNamed(fileName)
 		} else {
 			err = filesystem.NotFound
-			ad.Debug(ad.TRACE, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
+			ad.Debug(ad.RPC, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
 			return
 		}
 
 	case ParentDoesNotExist:
 		err = filesystem.NotFound
-		ad.Debug(ad.TRACE, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
+		ad.Debug(ad.RPC, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
 		return
 	}
 
@@ -87,7 +87,7 @@ func (mfs *MemoryFS) Open(filePath string, mode filesystem.OpenMode, flags files
 	ad.Assert(node != nil)
 	if !isFile {
 		err = filesystem.IsDirectory
-		ad.Debug(ad.TRACE, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
+		ad.Debug(ad.RPC, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
 		return
 	}
 
@@ -95,7 +95,7 @@ func (mfs *MemoryFS) Open(filePath string, mode filesystem.OpenMode, flags files
 	if errFromFile != nil {
 		fileDescriptor = -1
 		err = errFromFile
-		ad.Debug(ad.TRACE, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
+		ad.Debug(ad.RPC, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
 		return
 	}
 
@@ -114,7 +114,7 @@ func (mfs *MemoryFS) Open(filePath string, mode filesystem.OpenMode, flags files
 			mfs.smallestAvailableFD = fileDescriptor
 			fileDescriptor = -1
 			err = filesystem.TooManyFDsOpen
-			ad.Debug(ad.TRACE, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
+			ad.Debug(ad.RPC, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
 			return
 		} else {
 			// we've found our new smallestAvailableFD
@@ -122,7 +122,7 @@ func (mfs *MemoryFS) Open(filePath string, mode filesystem.OpenMode, flags files
 		}
 	}
 
-	ad.Debug(ad.TRACE, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
+	ad.Debug(ad.RPC, "Done with Open(%v, %v, %v), returning (%v, %v)", filePath, mode.String(), flags, fileDescriptor, err)
 	return // this is necessary for compilation, idk why
 }
 
@@ -133,7 +133,7 @@ func (mfs *MemoryFS) Close(fileDescriptor int) (success bool, err error) {
 	if !fdIsActive {
 		success = false
 		err = filesystem.InactiveFD
-		ad.Debug(ad.TRACE, "Done closing FD %v, returning (%t, %v)", fileDescriptor, success, err)
+		ad.Debug(ad.RPC, "Done closing FD %v, returning (%t, %v)", fileDescriptor, success, err)
 		return
 	}
 
@@ -147,7 +147,7 @@ func (mfs *MemoryFS) Close(fileDescriptor int) (success bool, err error) {
 	if fileDescriptor < mfs.smallestAvailableFD {
 		mfs.smallestAvailableFD = fileDescriptor
 	}
-	ad.Debug(ad.TRACE, "Done closing FD %v, returning (%t, %v)", fileDescriptor, success, err)
+	ad.Debug(ad.RPC, "Done closing FD %v, returning (%t, %v)", fileDescriptor, success, err)
 	return
 }
 
@@ -158,7 +158,7 @@ func (mfs *MemoryFS) Seek(fileDescriptor int, offset int, base filesystem.SeekMo
 		return -1, filesystem.InactiveFD
 	}
 	newPosition, err = file.Seek(offset, base)
-	ad.Debug(ad.TRACE, "FD %d seek complete - offset now %d", fileDescriptor, newPosition)
+	ad.Debug(ad.RPC, "FD %d seek complete - offset now %d", fileDescriptor, newPosition)
 	return
 }
 
@@ -184,7 +184,7 @@ func (mfs *MemoryFS) Write(fileDescriptor int, numBytes int, data []byte) (bytes
 func (mfs *MemoryFS) Delete(filePath string) (success bool, err error) {
 	ad.Debug(ad.TRACE, "Starting Delete(%v)", filePath)
 	if filePath == "/" {
-		ad.Debug(ad.TRACE, "Returning IllegalArgument to Delete(\"/\")")
+		ad.Debug(ad.RPC, "Returning IllegalArgument to Delete(\"/\")")
 		return false, filesystem.IllegalArgument
 	}
 
@@ -199,7 +199,7 @@ func (mfs *MemoryFS) Delete(filePath string) (success bool, err error) {
 	case ParentDoesNotExist:
 		success = false
 		err = filesystem.NotFound
-		ad.Debug(ad.TRACE, "Done with Delete(%v), returning (%t, %s)", filePath, success, err)
+		ad.Debug(ad.RPC, "Done with Delete(%v), returning (%t, %s)", filePath, success, err)
 		return
 	}
 
@@ -207,12 +207,12 @@ func (mfs *MemoryFS) Delete(filePath string) (success bool, err error) {
 	if nodeIsDirectory && len(dir.children) > 0 {
 		success = false
 		err = filesystem.DirectoryNotEmpty
-		ad.Debug(ad.TRACE, "Done with Delete(%v), returning (%t, %s)", filePath, success, err)
+		ad.Debug(ad.RPC, "Done with Delete(%v), returning (%t, %s)", filePath, success, err)
 		return
 	}
 
 	node.Delete()
-	ad.Debug(ad.TRACE, "Done with Delete(%v), returning (%t, %s)", filePath, success, err)
+	ad.Debug(ad.RPC, "Done with Delete(%v), returning (%t, %s)", filePath, success, err)
 	return true, nil
 }
 
