@@ -261,8 +261,7 @@ func (fs *FileServer) execute(ab AbstractOperation, clerkId int64, clerkIndex in
 	if !isDuplicate {
 
 		returnValue := fs.performAbstractOperation(ab)
-		ad.DebugObj(fs, ad.RPC, "Executing %v for %v %v. State is now %+v", ab.String(), clerkShortName(clerkId),
-			clerkIndex, fs.stateStr())
+		ad.DebugObj(fs, ad.RPC, "Executing %v for %v %v.", ab.String(), clerkShortName(clerkId), clerkIndex)
 		return returnValue
 	} else {
 		ad.DebugObj(fs, ad.TRACE, "Skipping duplicate command %+v for %v %d because %v", ab, clerkShortName(clerkId), clerkIndex, duplicateReason)
@@ -426,7 +425,3 @@ func (fs *FileServer) DebugPrefix() string {
 	return fmt.Sprintf("S%v %v%d %d", fs.me, thinksElectionStr, fs.thinksRaftTermIs, fs.lastCommandIndexExecuted)
 }
 
-// Get the state as a string for easy debugging
-func (fs *FileServer) stateStr() string {
-	return "\"TODO\""
-}

@@ -50,7 +50,7 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestWrite8Bytes,
 	TestWrite1KBytes,
 	TestWrite1MBytes,
-	//TestWrite10MBytes,
+	TestWrite10MBytes,
 	//TestWrite100MBytes,
 	TestReadClosedFile,
 	TestRndWriteRead1ByteSimple,
@@ -60,7 +60,7 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestRndWriteRead64BytesSimple,
 	TestRndWriteRead64BytesIter64K,
 	TestRndWriteRead64KBIter1MB,
-	//TestRndWriteRead64KBIter10MB,
+	TestRndWriteRead64KBIter10MB,
 	//TestRndWriteRead1MBIter100MB,
 	TestMkdir,
 	TestMkdirTree,
@@ -249,7 +249,7 @@ var testNames = []string{
 	"TestWrite8Bytes",
 	"TestWrite1KBytes",
 	"TestWrite1MBytes",
-	//"TestWrite10MBytes",
+	"TestWrite10MBytes",
 	//"TestWrite100MBytes",
 	"TestReadClosedFile",
 	"TestRndWriteRead1ByteSimple",
@@ -258,7 +258,7 @@ var testNames = []string{
 	"TestRndWriteRead8BytesIter64",
 	"TestRndWriteRead64BytesIter64K",
 	"TestRndWriteRead64KBIter1MB",
-	//"TestRndWriteRead64KBIter10MB",
+	"TestRndWriteRead64KBIter10MB",
 	//"TestRndWriteRead1MBIter100MB",
 	"TestRndWriteReadVerfiyHoleExpansion",
 }
@@ -573,9 +573,9 @@ func TestWrite1MBytes(t *testing.T, fs FileSystem) {
 	TestWriteNBytesIter(t, fs, "/wr-1m.txt", 1000000, 5)
 }
 
-//func TestWrite10MBytes(t *testing.T, fs FileSystem) {
-//	TestWriteNBytesIter(t, fs, "/wr-10m.txt", 10000000, 5)
-//}
+func TestWrite10MBytes(t *testing.T, fs FileSystem) {
+	TestWriteNBytesIter(t, fs, "/wr-10m.txt", 10000000, 5)
+}
 //func TestWrite100MBytes(t *testing.T, fs FileSystem) {
 //	TestWriteNBytesIter(t, fs, "/wr-100m.txt", 100000000, 3)
 //}
@@ -682,14 +682,13 @@ func TestRndWriteRead64BytesIter64K(t *testing.T, fs FileSystem) {
 }
 
 func TestRndWriteRead64KBIter1MB(t *testing.T, fs FileSystem) {
-	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-10M.txt", 6400, 160)
+	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-1M.txt", 6400, 160)
 }
 
-//
-//func TestRndWriteRead64KBIter10MB(t *testing.T, fs FileSystem) {
-//	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-100M.txt", 6400, 1600)
-//}
-//
+func TestRndWriteRead64KBIter10MB(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-10M.txt", 6400, 1600)
+}
+
 //func TestRndWriteRead1MBIter100MB(t *testing.T, fs FileSystem) {
 //	TestRndWriteReadNBytesIter(t, fs, "/r-1MB-iter-100M.txt", 1000000, 10)
 //}
