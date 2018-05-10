@@ -2,6 +2,7 @@ package fsraft
 
 import (
 	"ad"
+	"crypto/sha1"
 	"filesystem"
 	"fmt"
 	"reflect"
@@ -50,7 +51,7 @@ type AbstractOperation struct {
 	Offset         int
 	Base           filesystem.SeekMode
 	NumBytes       int
-	Data           [WriteSizeBytes]byte
+	Data           []byte
 }
 
 func (ab *AbstractOperation) String() string {
@@ -181,11 +182,20 @@ type OperationArgs struct {
 	// Field names must start with capital letters, or else RPC will break.
 	AbstractOperation AbstractOperation // the operation to be performed
 	ClerkId           int64
-	ClerkIndex        int // this is the ClerkIndex-th operation submitted by this clerk (1-indexed)
+	ClerkIndex        int   // this is the ClerkIndex-th operation submitted by this clerk (1-indexed)
+	Birthday          int64 // The number of ms between the epoch and the creation time of this object. Used to ensure no hash collisions.
 }
 
-func OperationArgsEquals(o1, o2 OperationArgs) bool {
+func OpArgsEquals(o1, o2 OperationArgs) bool {
 	return reflect.DeepEqual(o1, o2)
+}
+
+type OpArgsHash [20]byte // 20 because a SHA256 hash is 20 bytes.
+
+// Hash using the SHA256 hash.
+func HashOpArgs(args OperationArgs) OpArgsHash {
+	return sha1.Sum([]byte(fmt.Sprintf("%+v", args)))
+
 }
 
 // ReplyStatus =========================================================================================================

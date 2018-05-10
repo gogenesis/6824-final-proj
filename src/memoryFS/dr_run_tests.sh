@@ -33,7 +33,7 @@ run_test() {
         done
 }
 
-run_test "TestMemoryFS_TestBasicOpenClose" 2
+run_test "TestMemoryFS_TestBasicOpenClose" 1
 run_test "TestMemoryFS_TestCannotReadFromWriteOnly" 1
 run_test "TestMemoryFS_TestCannotWriteToReadOnly" 1
 run_test "TestMemoryFS_TestCloseClosed" 1

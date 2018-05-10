@@ -183,6 +183,10 @@ func (mfs *MemoryFS) Write(fileDescriptor int, numBytes int, data []byte) (bytes
 // See the spec for FileSystem::Delete.
 func (mfs *MemoryFS) Delete(filePath string) (success bool, err error) {
 	ad.Debug(ad.TRACE, "Starting Delete(%v)", filePath)
+	if filePath == "/" {
+		ad.Debug(ad.TRACE, "Returning IllegalArgument to Delete(\"/\")")
+		return false, filesystem.IllegalArgument
+	}
 
 	currentDir, node, nodeName, existence := mfs.followPath(filePath)
 	ad.Debug(ad.TRACE, "Got currentDir=%+v, node=%+v, nodeName=%v, existence=%v", currentDir, node, nodeName, existence)

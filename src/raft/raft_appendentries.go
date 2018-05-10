@@ -286,7 +286,8 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			// We know that these can't be compressed entries; if they were, then args.PrevLogIndex would be
 			// < rf.lastIndexInSnapshot() and the RPC would have been rejected.
 			for _, uncompressedEntryInLog := range rf.Log.UncompressedEntries {
-				if entryFromLeader == uncompressedEntryInLog {
+				//if entryFromLeader == uncompressedEntryInLog {
+				if LogEntryEquals(entryFromLeader, uncompressedEntryInLog) {
 					ad.DebugObj(rf, ad.TRACE, "%+v is already in the log (uncompressed)", entryFromLeader)
 					entryAlreadyInLog = true
 				}

@@ -93,24 +93,7 @@ func (ck *Clerk) Write(fileDescriptor int, numBytes int, data []byte) (bytesWrit
 	ab := AbstractOperation{OpType: WriteOp}
 	ab.FileDescriptor = fileDescriptor
 	ab.NumBytes = numBytes
-	// Don't write more data than there is. This is important because we will pad data with 0s at the end
-	// and we don't want those to get written to the file.
-	if len(data) < numBytes {
-		ab.NumBytes = len(data)
-	}
-
-	// Convert data from a []byte (a slice) into a [WriteSizeBytes]byte (an array)
-	if ab.NumBytes > WriteSizeBytes {
-		ad.DebugObj(ck, ad.WARN, "Rejcting Write of %d bytes to fd %d because WriteSizeBytes=%d",
-			ab.NumBytes, fileDescriptor, WriteSizeBytes)
-		return 0, filesystem.WriteTooLarge
-	}
-	var dataArray [WriteSizeBytes]byte
-	// elements at the end of dataArray are automatically zero bytes
-	for i := 0; i < ab.NumBytes; i++ {
-		dataArray[i] = data[i]
-	}
-	ab.Data = dataArray
+	ab.Data = data
 
 	returnVal := ck.Operation(ab)
 
@@ -137,7 +120,7 @@ func (ck *Clerk) Operation(abstractOperation AbstractOperation) []interface{} {
 	ck.numOperations++
 
 	ad.DebugObj(ck, ad.RPC, "Beginning %v", abstractOperation.String())
-	args := OperationArgs{abstractOperation, ck.id, ck.numOperations}
+	args := OperationArgs{abstractOperation, ck.id, ck.numOperations, time.Now().UnixNano()}
 
 	// first, try the last leader
 	serverToTry := ck.lastLeader

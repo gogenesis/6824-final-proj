@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"reflect"
 	"runtime"
 	"time"
 )
@@ -151,4 +152,12 @@ func (rf *Raft) unlock() {
 	}
 	rf.assertInvariants()
 	rf.mutex.Unlock()
+}
+
+// This function can't go in either package raft or fsraft because it needs to
+// import from both of them, so it would cause a cyclic dependency.
+func LogEntryEquals(l1, l2 LogEntry) bool {
+	return l1.Term == l2.Term &&
+		l1.Index == l2.Index &&
+		reflect.DeepEqual(l1.Command, l2.Command)
 }

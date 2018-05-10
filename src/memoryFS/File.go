@@ -104,25 +104,36 @@ func (file *File) Read(numBytes int) (bytesRead int, data []byte, err error) {
 
 // See FileSystem::Write.
 func (file *File) Write(numBytes int, data []byte) (bytesWritten int, err error) {
+	ad.Debug(ad.TRACE, "Beginning Write(%d, len(data)=%d)", numBytes, len(data))
+	if numBytes < 0 {
+		ad.Debug(ad.TRACE, "Returning IllegalArgument because numBytes is negative.")
+		return -1, filesystem.IllegalArgument
+	}
 	if file.openMode == filesystem.ReadOnly {
+		ad.Debug(ad.TRACE, "Returning WrongMode because this file is open for ReadOnly.")
 		return -1, filesystem.WrongMode
 	}
-	ad.AssertExplain(numBytes == len(data), "bad numBytes %d vs len(data) %d",
-		numBytes, len(data))
-	// grow file as needed, leaving holes >EOF written
-	if file.offset+numBytes > len(file.contents) {
-		ad.Debug(ad.RPC, "growing file - offset %d numBytes %d len(contents) %d",
-			file.offset, numBytes, len(file.contents))
-		realloc := make([]byte, file.offset+numBytes)
-		copy(realloc[0:len(file.contents)], file.contents)
-		file.contents = realloc //hopefully garbage collect old contents, needs confirm
+
+	// Two stages: first, make sure the file is long enough by adding zero bytes if necessary.
+	bytesWritten = numBytes
+	if len(data) < bytesWritten {
+		bytesWritten = len(data)
 	}
-	copy(file.contents[file.offset:file.offset+numBytes], data)
-	// we currently assume all bytes are written correctly
-	// more strict checks would check datastore space first and write up to limit
-	file.offset += numBytes
-	ad.Debug(ad.RPC, "done, seek offset %d, file now %d bytes", file.offset, len(file.contents))
-	return numBytes, nil
+	if file.offset+bytesWritten > len(file.contents) {
+		padZeroes := make([]byte, file.offset+bytesWritten-len(file.contents))
+		ad.Debug(ad.TRACE, "File offset is at %d and would write %d, but file is only %d bytes long. "+
+			"Padding space with %d+%d-%d=%d zero bytes.",
+			file.offset, bytesWritten, len(file.contents),
+			file.offset, bytesWritten, len(file.contents), len(padZeroes))
+		file.contents = append(file.contents, padZeroes...)
+	}
+
+	// Then, overwrite bytes without having to worry about length.
+	copy(file.contents[file.offset:], data[:bytesWritten])
+	file.offset += bytesWritten
+	ad.Assert(file.offset <= len(file.contents))
+	ad.Debug(ad.TRACE, "Done writing %d bytes, offset now at %d", bytesWritten, file.offset)
+	return bytesWritten, nil
 }
 
 // See FileSystem::Delete.

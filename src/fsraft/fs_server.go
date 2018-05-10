@@ -28,15 +28,10 @@ type FileServer struct {
 	thinksRaftTermIs   int                // what it thinks the term of the underlying Raft peer is
 
 	memoryFS                 memoryFS.MemoryFS // The actual filesystem stored on this server
-	operationsInProgress     map[*OperationArgs]OperationInProgress
+	operationsInProgress     map[OpArgsHash]OperationInProgress
 	clerkCommandsExecuted    map[int64]int //clerkCommandsExecuted[clerk serial number] = last command index of a command from that clerk
 	lastCommandIndexExecuted int           // total number of commands executed. Equal to the sum of values in clerkCommandsExecuted.
 }
-
-// Data written must be arrays of this length instead of slices.
-// This is so that AbstractOperations can be compared with ==, used as map keys, etc,
-// all of which can be done with arrays but not not slices.
-const WriteSizeBytes = 64
 
 // Clerk-facing API ====================================================================================================
 
@@ -74,7 +69,7 @@ func StartFileServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persis
 	fs.thinksRaftTermIs = 0
 
 	fs.memoryFS = memoryFS.CreateEmptyMemoryFS()
-	fs.operationsInProgress = make(map[*OperationArgs]OperationInProgress)
+	fs.operationsInProgress = make(map[OpArgsHash]OperationInProgress)
 	fs.clerkCommandsExecuted = make(map[int64]int)
 	fs.lastCommandIndexExecuted = 0
 
@@ -116,7 +111,7 @@ func (fs *FileServer) Operation(args *OperationArgs, reply *OperationReply) {
 
 	// unbuffered because I'll be waiting whenever someone sends on this channel
 	resultChannel := make(chan OperationReply)
-	fs.operationsInProgress[args] = OperationInProgress{*args, expectedIndex, resultChannel}
+	fs.operationsInProgress[HashOpArgs(*args)] = OperationInProgress{*args, expectedIndex, resultChannel}
 	ad.DebugObj(fs, ad.RPC, "Started %v for %v %d", args.AbstractOperation.String(), clerkShortName(args.ClerkId), args.ClerkIndex)
 	fs.lock.Unlock()
 
@@ -159,7 +154,7 @@ func (fs *FileServer) applyChMonitorThread() {
 				fs.updateTermAndLeadership()
 
 				// if this applyMsg is for a client who has an operation in progress with us
-				opInProgress, containsKey := fs.operationsInProgress[&opArgs]
+				opInProgress, containsKey := fs.operationsInProgress[HashOpArgs(opArgs)]
 
 				if containsKey {
 					// Maybe lose leadership. If a different command has appeared at the index returned by Start
@@ -167,7 +162,7 @@ func (fs *FileServer) applyChMonitorThread() {
 					// (and we got something different there)
 					for _, otherOpInProgress := range fs.operationsInProgress {
 						if (applyMsg.CommandIndex == otherOpInProgress.expectedIndex) &&
-							!OperationArgsEquals(opArgs, otherOpInProgress.operationArgs) {
+							!OpArgsEquals(opArgs, otherOpInProgress.operationArgs) {
 							ad.DebugObj(fs, ad.WARN, "A different operation has appeared at the index returned by Start()!"+
 								" I have %+v in progress, but %+v is different and has the same index.", opInProgress, otherOpInProgress)
 							fs.loseLeadership()
@@ -186,15 +181,9 @@ func (fs *FileServer) applyChMonitorThread() {
 				if containsKey {
 					ad.DebugObj(fs, ad.TRACE, "Routing RPC reply OK to %v %d", clerkShortName(opArgs.ClerkId), opArgs.ClerkIndex)
 					opInProgress.resultChannel <- OperationReply{returnValue, OK}
-					delete(fs.operationsInProgress, &opArgs)
+					delete(fs.operationsInProgress, HashOpArgs(opArgs))
 				} else {
-					clientsInProgressShortNames := make([]string, len(fs.operationsInProgress))
-					for otherOperationArgs := range fs.operationsInProgress {
-						clientName := clerkShortName(otherOperationArgs.ClerkId)
-						clientsInProgressShortNames = append(clientsInProgressShortNames, clientName)
-					}
-					ad.DebugObj(fs, ad.TRACE, "No RPC in progress for %v, clients with RPCs in progress = %+v",
-						clerkShortName(opArgs.ClerkId), clientsInProgressShortNames)
+					ad.DebugObj(fs, ad.TRACE, "No RPC in progress for %v.", clerkShortName(opArgs.ClerkId))
 				}
 				if (fs.maxraftstate != -1) && (fs.rf.StateSizeBytes() > fs.maxraftstate) {
 					ad.DebugObj(fs, ad.TRACE, "Raft's state is %d bytes, but max is %d bytes.", fs.rf.StateSizeBytes(), fs.maxraftstate)
@@ -349,10 +338,10 @@ func (fs *FileServer) loseLeadership() {
 		ad.DebugObj(fs, ad.WARN, "Lost leadership! Would fail RPCs in progress, but there are none.")
 	} else {
 		ad.DebugObj(fs, ad.WARN, "Lost leadership! Failing all %d RPCs in progress %+v", len(fs.operationsInProgress), fs.operationsInProgress)
-		for clientId, opInProgress := range fs.operationsInProgress {
+		for hashOfOpArgsInProgress, opInProgress := range fs.operationsInProgress {
 			// no need to send in separate goroutines because there is guaranteed to be someone waiting on this channel
 			opInProgress.resultChannel <- OperationReply{[]interface{}{}, NotLeader}
-			delete(fs.operationsInProgress, clientId)
+			delete(fs.operationsInProgress, hashOfOpArgsInProgress)
 		}
 	}
 	fs.thinksRaftIsLeader = false
