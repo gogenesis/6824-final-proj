@@ -17,7 +17,8 @@ func runFunctionalityTestWithDifficulty(t *testing.T, functionalityTest func(t *
 // This list is used in to run every functionality test on every difficulty.
 var Difficulties = []func(t *testing.T) fs.FileSystem{
 	OneClerkThreeServersNoErrors,
-   OneClerkFiveServersErrors,
+	OneClerkFiveServersUnreliableNet,
+	OneClerkThreeServersSnapshots,
 }
 
 func OneClerkThreeServersNoErrors(t *testing.T) fs.FileSystem {
@@ -25,8 +26,13 @@ func OneClerkThreeServersNoErrors(t *testing.T) fs.FileSystem {
 	return cfg.makeClient(cfg.All())
 }
 
-func OneClerkFiveServersErrors(t *testing.T) fs.FileSystem {
+func OneClerkFiveServersUnreliableNet(t *testing.T) fs.FileSystem {
 	cfg := make_config(t, 5, true, -1)
+	return cfg.makeClient(cfg.All())
+}
+
+func OneClerkThreeServersSnapshots(t *testing.T) fs.FileSystem {
+	cfg := make_config(t, 3, true, 1000) // arbitrarily
 	return cfg.makeClient(cfg.All())
 }
 
