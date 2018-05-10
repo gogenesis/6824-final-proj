@@ -1,4 +1,7 @@
 *.swp
-# Generated files
-./src/fsraft/combination_test.go
-./src/memoryFS/memoryFS_test.go
+# We need to generate and store generated files
+# for the test server, or fix our code to use a
+# $GOBIN env var to fix it right so the test server
+# can call $GOBIN generate to generate the tests.
+#./src/fsraft/combination_test.go
+#./src/memoryFS/memoryFS_test.go
