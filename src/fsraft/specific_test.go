@@ -3,7 +3,6 @@ package fsraft
 import (
 	fs "filesystem"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 )
@@ -13,7 +12,6 @@ const electionTimeout = 1 * time.Second
 
 // UNVERIFIED - requesting review
 // Omitted the word Test fully so it doesn't get picked up yet
-//func TesTmpTOneClerkFiveServersNetworkPartition(t *testing.T) {
 func TestOneClerkFiveServersPartition(t *testing.T) {
 	const nservers = 5
 	cfg := make_config(t, nservers, false, -1)
@@ -61,29 +59,24 @@ func TestOneClerkFiveServersPartition(t *testing.T) {
 	// This wasn't needed in lab 3 because there was only one operation done there,
 	// so it was automatically atomic. Here, if both try to open the file at the
 	// same time, one will fail with AlreadyOpen.
-	var minorityLock sync.Mutex
 	go func() {
-		minorityLock.Lock()
 		// Equivalent to Put(cfg, minorityClerkA, "1", "15")
-		fd2 := fs.HelpOpen(t, minorityClerkA, dataFile, fs.ReadWrite, 0)
+		fd2 := fs.HelpOpen(t, minorityClerkA, dataFile, fs.ReadWrite, fs.Block)
 		fs.HelpSeek(t, minorityClerkA, fd2, 0, fs.FromBeginning)
 		fs.HelpWriteBytes(t, minorityClerkA, fd2, []byte("15")) //offset now 2
 		fs.HelpClose(t, minorityClerkA, fd2)
-		minorityLock.Unlock()
 		doneWithWriteInMinority <- true
 	}()
 	go func() {
-		minorityLock.Lock()
 		// Equivalent to Get(cfg, minorityClerkB, "1") // different clerk in minority
 		// Perhaps Get => fs.Seek, fs.Read
-		fd2 := fs.HelpOpen(t, minorityClerkB, dataFile, fs.ReadOnly, 0)
+		fd2 := fs.HelpOpen(t, minorityClerkB, dataFile, fs.ReadOnly, fs.Block)
 		fs.HelpSeek(t, minorityClerkB, fd2, 0, fs.FromBeginning)
 		_, _ = fs.HelpRead(t, minorityClerkB, fd2, 2)
 		// not sure what the data should be here yet, original test
 		// just does the Get and doesn't look at data
 		//fs.HelpVerifyBytes(t, dataCkp2b, []byte("??"), "clerkMajority read 1.5")
 		fs.HelpClose(t, minorityClerkB, fd2)
-		minorityLock.Unlock()
 		doneWithReadInMinority <- true
 	}()
 
@@ -97,7 +90,7 @@ func TestOneClerkFiveServersPartition(t *testing.T) {
 
 	// Make sure that the state has not been changed by requests made to the minority.
 	//Equivalent to check(cfg, t, clerkMajority, "1", "14")
-	fd = fs.HelpOpen(t, majorityClerk, dataFile, fs.ReadOnly, 0)
+	fd = fs.HelpOpen(t, majorityClerk, dataFile, fs.ReadOnly, fs.Block)
 	fs.HelpSeek(t, majorityClerk, fd, 0, fs.FromBeginning)
 	_, data = fs.HelpRead(t, majorityClerk, fd, 2) //offset now 2
 	fs.HelpVerifyBytes(t, data, []byte("14"), "clerkMajority read two")
@@ -105,10 +98,9 @@ func TestOneClerkFiveServersPartition(t *testing.T) {
 
 	// Change the state to make sure we can still change it in the majority.
 	// Eqivalent to Put(cfg, clerkMajority, "1", "16")
-	fd = fs.HelpOpen(t, majorityClerk, dataFile, fs.ReadWrite, 0)
+	fd = fs.HelpOpen(t, majorityClerk, dataFile, fs.ReadWrite, fs.Block)
 	fs.HelpSeek(t, majorityClerk, fd, 0, fs.FromBeginning)
 	fs.HelpWriteBytes(t, majorityClerk, fd, []byte("16")) //offset now 2
-
 	//Equivalent to check(cfg, t, clerkMajority, "1", "16")
 	fs.HelpSeek(t, majorityClerk, fd, 0, fs.FromBeginning)
 	_, data = fs.HelpRead(t, majorityClerk, fd, 2) //offset now 2
