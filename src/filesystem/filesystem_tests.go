@@ -17,7 +17,6 @@ import (
 // Whenever you add a new functionality test, be sure to add it to this list.
 // This list is used in test_setup.go to run every functionality test on every difficulty.
 var FunctionalityTests = []func(t *testing.T, fs FileSystem){
-	TestHelpGenerateJenkinsPipeline,
 	TestBasicOpenClose,
 	TestDeleteNotFound,
 	TestCloseClosed,
@@ -267,35 +266,6 @@ var testNames = []string{
 // "TestMkdir",
 //	"TestMkdirTree",
 //	"TestOpenCloseDeleteAcrossDirectories",
-
-// should save countless hours messing with Jenkinsfile.
-// eventually could automate the generation and push of the entire Jenkinsfile.
-func TestHelpGenerateJenkinsPipeline(t *testing.T, fs FileSystem) {
-	//Core MemoryFS
-	combName := "MemoryFS"
-	for i := 0; i < len(testNames); i++ {
-		print(fmt.Sprintf(" stage('DB3 Test%s_%s') {\n", combName, testNames[i]))
-		print("\t\tsteps {\n")
-		print("\t\t\tscript {\n")
-		print(fmt.Sprintf("\t\t\t\tsh '"+ //ugly ... break string into local vars eventually
-			"GO_TEST_PKG=Test%s_%s /volumes/babtin-volume/babtin/babtin/jenkins_dse_debug_optimized.sh 1 1 1 1'\n", combName, testNames[i]))
-		print("\t\t\t}\n")
-		print("\t\t}\n")
-		print("\t}\n")
-	}
-	//TestClerk_OneClerkThreeServersNoErrors
-	combName = "Clerk_OneClerkThreeServersNoErrors"
-	for i := 0; i < len(testNames); i++ {
-		print(fmt.Sprintf(" stage('DB3 Test%s_%s') {\n", combName, testNames[i]))
-		print("\t\tsteps {\n")
-		print("\t\t\tscript {\n")
-		print(fmt.Sprintf("\t\t\t\tsh '"+ //ugly ... break string into local vars eventually
-			"GO_TEST_SRC=$GOPATH/src/fsraft GO_TEST_PKG=Test%s_%s /volumes/babtin-volume/babtin/babtin/jenkins_dse_debug_optimized.sh 1 1 1 1'\n", combName, testNames[i]))
-		print("\t\t\t}\n")
-		print("\t\t}\n")
-		print("\t}\n")
-	}
-}
 
 // ===== BEGIN OPEN CLOSE TESTS ======
 
