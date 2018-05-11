@@ -57,8 +57,8 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestRndWriteRead8BytesIter8,
 	TestRndWriteRead8BytesIter64,
 	TestRndWriteRead64BytesSimple,
-	TestRndWriteRead640BytesIter64K,
-	TestRndWriteRead64KBIter1MB,
+	TestRndWriteRead6400BytesIter64K,
+	TestRndWriteRead512KBIter1MB,
 	//TestRndWriteRead64KBIter10MB,
 	//TestRndWriteRead1MBIter100MB,
 	TestMkdir,
@@ -104,8 +104,8 @@ var testNames = []string{
 	"TestRndWriteRead8BytesSimple",
 	"TestRndWriteRead8BytesIter8",
 	"TestRndWriteRead8BytesIter64",
-	"TestRndWriteRead640BytesIter64K",
-	"TestRndWriteRead64KBIter1MB",
+	"TestRndWriteRead6400BytesIter64K",
+	"TestRndWriteRead512KBIter1MB",
 	//"TestRndWriteRead64KBIter10MB",
 	//"TestRndWriteRead1MBIter100MB",
 	"TestRndWriteReadVerfiyHoleExpansion",
@@ -648,12 +648,12 @@ func TestRndWriteRead64BytesSimple(t *testing.T, fs FileSystem) {
 	TestRndWriteReadNBytesIter(t, fs, "/r-64-iter-1.txt", 64, 1)
 }
 
-func TestRndWriteRead640BytesIter64K(t *testing.T, fs FileSystem) {
-	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-1K.txt", 640, 100)
+func TestRndWriteRead6400BytesIter64K(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-1K.txt", 6400, 10)
 }
 
-func TestRndWriteRead64KBIter1MB(t *testing.T, fs FileSystem) {
-	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-1M.txt", 6400, 160)
+func TestRndWriteRead512KBIter1MB(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-1M.txt", 512000, 2)
 }
 
 func TestRndWriteRead64KBIter10MB(t *testing.T, fs FileSystem) {

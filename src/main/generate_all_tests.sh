@@ -12,10 +12,6 @@ main () {
       return 1
    fi
    chmod u+rwx $precheckin_script && echo "precheckin tests chmodded ok"
-   if [ -f $jenkins_script ]; then
-      echo "warning: skipping jenkins script generation because it exists! rm it if you want a new one!"
-   else
-      cp $precheckin_script $jenkins_script && echo "jenkins script generated ok"
-   fi
+   cp $precheckin_script $jenkins_script && echo "jenkins script generated ok"
 }
 main $*

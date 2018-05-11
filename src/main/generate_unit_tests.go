@@ -173,16 +173,16 @@ func genPrecheckinScript(params genFileParameters) {
    genFile.Write([]byte("cd $SCRIPT_DIR/../memoryFS\n"))
    genFile.Write([]byte("echo Begin Core MemoryFS Tests\n"))
 	for testName, _ := range params.testNamesToMethodBodies {
-		genFile.Write([]byte(fmt.Sprintf("run_test \"Test%s_%s\" 1\n", "MemoryFS", testName)))
+		genFile.Write([]byte(fmt.Sprintf("time run_test \"Test%s_%s\" 1\n", "MemoryFS", testName)))
    }
    genFile.Write([]byte("cd $SCRIPT_DIR/../fsraft\n"))
    genFile.Write([]byte("echo Begin Raft Difficulty 1 Tests - Clerk_OneClerkThreeServersNoErrors Tests\n"))
 	for testName, _ := range params.testNamesToMethodBodies {
-		genFile.Write([]byte(fmt.Sprintf("run_test \"Test%s_%s\" 1\n", "Clerk_OneClerkThreeServersNoErrors", testName)))
+		genFile.Write([]byte(fmt.Sprintf("time run_test \"Test%s_%s\" 1\n", "Clerk_OneClerkThreeServersNoErrors", testName)))
    }
    genFile.Write([]byte("echo Begin Raft Difficulty 2 Tests - Clerk_OneClerkFiveServersUnreliableNet Tests\n"))
 	for testName, _ := range params.testNamesToMethodBodies {
-		genFile.Write([]byte(fmt.Sprintf("run_test \"Test%s_%s\" 1\n", "Clerk_OneClerkFiveServersUnreliableNet", testName)))
+		genFile.Write([]byte(fmt.Sprintf("time run_test \"Test%s_%s\" 1\n", "Clerk_OneClerkFiveServersUnreliableNet", testName)))
    }
    genFile.Write([]byte("if [ ! -z $JENKINS ]; then\n"))
    genFile.Write([]byte("  exit $JENKINS_FAIL\n")) //surface any fails to jenkins
