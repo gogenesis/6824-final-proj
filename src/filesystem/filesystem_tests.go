@@ -57,7 +57,7 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestRndWriteRead8BytesIter8,
 	TestRndWriteRead8BytesIter64,
 	TestRndWriteRead64BytesSimple,
-	TestRndWriteRead64BytesIter64K,
+	TestRndWriteRead640BytesIter64K,
 	TestRndWriteRead64KBIter1MB,
 	//TestRndWriteRead64KBIter10MB,
 	//TestRndWriteRead1MBIter100MB,
@@ -68,6 +68,47 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestMkdirAlreadyExists,
 	TestRndWriteReadVerfiyHoleExpansion,
 	TestCannotDeleteRootDir,
+}
+
+var testNames = []string{
+	"TestBasicOpenClose",
+	"TestDeleteNotFound",
+	"TestCloseClosed",
+	"TestOpenOpened",
+	"TestOpenNotFound",
+	"TestOpenAlreadyExists",
+	"TestOpenROClose",
+	"TestOpenROClose4",
+	"TestOpenROClose64",
+	"TestOpenRWClose",
+	"TestOpenRWClose4",
+	"TestOpenRWClose64",
+	"TestOpenCloseLeastFD",
+	"TestOpenCloseDeleteMaxFD",
+	"TestOpenCloseDeleteRoot",
+	"TestOpenCloseDeleteRootMax",
+	"TestSeekErrorBadFD",
+	"TestSeekErrorBadOffsetOperation",
+	"TestSeekOffEOF",
+	"TestWriteClosedFile",
+	"TestWriteReadBasic",
+	"TestWriteReadBasic4",
+	"TestWrite1Byte",
+	"TestWrite8Bytes",
+	"TestWrite1KBytes",
+	"TestWrite1MBytes",
+	//"TestWrite10MBytes",
+	//"TestWrite100MBytes",
+	"TestReadClosedFile",
+	"TestRndWriteRead1ByteSimple",
+	"TestRndWriteRead8BytesSimple",
+	"TestRndWriteRead8BytesIter8",
+	"TestRndWriteRead8BytesIter64",
+	"TestRndWriteRead640BytesIter64K",
+	"TestRndWriteRead64KBIter1MB",
+	//"TestRndWriteRead64KBIter10MB",
+	//"TestRndWriteRead1MBIter100MB",
+	"TestRndWriteReadVerfiyHoleExpansion",
 }
 
 func HelpVerifyBytes(t *testing.T, a []byte, b []byte, msg string) {
@@ -219,47 +260,6 @@ func HelpReadWrite(t *testing.T, fs FileSystem, path string, contents string) in
 			"read data %s vs %s", data[bite], contents[bite])
 	}
 	return nBytes
-}
-
-var testNames = []string{
-	"TestBasicOpenClose",
-	"TestDeleteNotFound",
-	"TestCloseClosed",
-	"TestOpenOpened",
-	"TestOpenNotFound",
-	"TestOpenAlreadyExists",
-	"TestOpenROClose",
-	"TestOpenROClose4",
-	"TestOpenROClose64",
-	"TestOpenRWClose",
-	"TestOpenRWClose4",
-	"TestOpenRWClose64",
-	"TestOpenCloseLeastFD",
-	"TestOpenCloseDeleteMaxFD",
-	"TestOpenCloseDeleteRoot",
-	"TestOpenCloseDeleteRootMax",
-	"TestSeekErrorBadFD",
-	"TestSeekErrorBadOffsetOperation",
-	"TestSeekOffEOF",
-	"TestWriteClosedFile",
-	"TestWriteReadBasic",
-	"TestWriteReadBasic4",
-	"TestWrite1Byte",
-	"TestWrite8Bytes",
-	"TestWrite1KBytes",
-	"TestWrite1MBytes",
-	"TestWrite10MBytes",
-	//"TestWrite100MBytes",
-	"TestReadClosedFile",
-	"TestRndWriteRead1ByteSimple",
-	"TestRndWriteRead8BytesSimple",
-	"TestRndWriteRead8BytesIter8",
-	"TestRndWriteRead8BytesIter64",
-	"TestRndWriteRead64BytesIter64K",
-	"TestRndWriteRead64KBIter1MB",
-	"TestRndWriteRead64KBIter10MB",
-	//"TestRndWriteRead1MBIter100MB",
-	"TestRndWriteReadVerfiyHoleExpansion",
 }
 
 // ===== the line in the sand =====
@@ -540,11 +540,11 @@ func TestWrite1KBytes(t *testing.T, fs FileSystem) {
 }
 
 func TestWrite1MBytes(t *testing.T, fs FileSystem) {
-	TestWriteNBytesIter(t, fs, "/wr-1m.txt", 1000000, 5)
+	TestWriteNBytesIter(t, fs, "/wr-1m.txt", 1000000, 1)
 }
 
 func TestWrite10MBytes(t *testing.T, fs FileSystem) {
-	TestWriteNBytesIter(t, fs, "/wr-10m.txt", 10000000, 5)
+	TestWriteNBytesIter(t, fs, "/wr-10m.txt", 10000000, 1)
 }
 
 //func TestWrite100MBytes(t *testing.T, fs FileSystem) {
@@ -648,8 +648,8 @@ func TestRndWriteRead64BytesSimple(t *testing.T, fs FileSystem) {
 	TestRndWriteReadNBytesIter(t, fs, "/r-64-iter-1.txt", 64, 1)
 }
 
-func TestRndWriteRead64BytesIter64K(t *testing.T, fs FileSystem) {
-	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-1K.txt", 64, 1000)
+func TestRndWriteRead640BytesIter64K(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-1K.txt", 640, 100)
 }
 
 func TestRndWriteRead64KBIter1MB(t *testing.T, fs FileSystem) {
@@ -657,7 +657,7 @@ func TestRndWriteRead64KBIter1MB(t *testing.T, fs FileSystem) {
 }
 
 func TestRndWriteRead64KBIter10MB(t *testing.T, fs FileSystem) {
-	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-10M.txt", 6400, 1600)
+	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-10M.txt", 64000, 157)
 }
 
 //func TestRndWriteRead1MBIter100MB(t *testing.T, fs FileSystem) {
