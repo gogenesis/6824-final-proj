@@ -126,9 +126,12 @@ func genPrecheckinScript(params genFileParameters) {
 
    genFile.Write([]byte("#!/usr/bin/env bash\n"))
    genFile.Write([]byte("\n"))
+   genFile.Write([]byte("export JENKINS_FAIL=0\n"))
    genFile.Write([]byte("SCRIPT_DIR=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )\" && pwd )\"\n"))
    genFile.Write([]byte("mkdir -p $SCRIPT_DIR/outfiles\n"))
-   genFile.Write([]byte("rm $SCRIPT_DIR/outfiles/*\n"))
+   genFile.Write([]byte("if [ -z $JENKINS ]; then\n"))
+   genFile.Write([]byte("  rm $SCRIPT_DIR/outfiles/*\n"))
+   genFile.Write([]byte("fi\n"))
    genFile.Write([]byte("touch $SCRIPT_DIR/outfiles/log\n"))
    genFile.Write([]byte("\n"))
    genFile.Write([]byte("iter() {\n"))
@@ -140,16 +143,18 @@ func genPrecheckinScript(params genFileParameters) {
    genFile.Write([]byte(""))
    genFile.Write([]byte("        if [ -z $JENKINS ]; then\n"))
    genFile.Write([]byte("           go test -run \"$testname\" > \"$outfile\" 2>&1\n"))
+   genFile.Write([]byte("           exit_code=$?\n"))
    genFile.Write([]byte("        else\n"))
    genFile.Write([]byte("           $GOBIN test -run \"$testname\" > \"$outfile\" 2>&1\n"))
+   genFile.Write([]byte("           exit_code=$?\n"))
    genFile.Write([]byte("        fi\n"))
    genFile.Write([]byte(""))
-   genFile.Write([]byte("        exit_code=\"$?\"\n"))
-   genFile.Write([]byte("        if [ \"$exit_code\" = \"0\" ]; then\n"))
+   genFile.Write([]byte("        if [ $exit_code == 0 ]; then\n"))
    genFile.Write([]byte("                echo \"${testname} success ${index}\" | tee -a $SCRIPT_DIR/outfiles/log\n"))
    genFile.Write([]byte("                rm \"$outfile\"\n"))
    genFile.Write([]byte("        else\n"))
    genFile.Write([]byte("                echo \"${testname} FAIL ${index}!\" | tee -a $SCRIPT_DIR/outfiles/log\n"))
+   genFile.Write([]byte("                export JENKINS_FAIL=1\n"))
    genFile.Write([]byte("        fi\n"))
    genFile.Write([]byte("}\n"))
    genFile.Write([]byte("\n"))
@@ -179,6 +184,9 @@ func genPrecheckinScript(params genFileParameters) {
 	for testName, _ := range params.testNamesToMethodBodies {
 		genFile.Write([]byte(fmt.Sprintf("run_test \"Test%s_%s\" 1\n", "Clerk_OneClerkFiveServersUnreliableNet", testName)))
    }
+   genFile.Write([]byte("if [ ! -z $JENKINS ]; then\n"))
+   genFile.Write([]byte("  exit $JENKINS_FAIL\n")) //surface any fails to jenkins
+   genFile.Write([]byte("fi\n"))
    // if we get past here for more difficulties, great! 
 
 	fmt.Printf("Generated full precheckin script at %v\n", filePath)
