@@ -693,7 +693,7 @@ func TestWrite1MBytes(t *testing.T, fs FileSystem) {
 }
 
 func TestWrite10MBytes(t *testing.T, fs FileSystem) {
-	TestWriteNBytesIter(t, fs, "/wr-10m.txt", 128000, 80)
+	TestWriteNBytesIter(t, fs, "/wr-10m.txt", 256000, 40)
 }
 
 // ===== BEGIN ITERATIVE WRITE & READ CHUNK TESTS EXPANDING FILES =====
