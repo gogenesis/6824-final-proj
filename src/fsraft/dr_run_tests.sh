@@ -18,7 +18,7 @@ iter() {
         touch "$outfile"
         #echo "running ${testname}.${index}"
 
-        go test -run "$testname" > "$outfile" 2>&1
+        go test -run "$testname" > "$outfile" 2>&1 #
 
         exit_code="$?"
         if [ "$exit_code" = "0" ]; then
@@ -87,7 +87,11 @@ run_test "TestClerk_OneClerkThreeServersNoErrors_TestWrite8Bytes" 0
 run_test "TestClerk_OneClerkThreeServersNoErrors_TestWriteClosedFile" 0
 run_test "TestClerk_OneClerkThreeServersNoErrors_TestWriteReadBasic" 0
 run_test "TestClerk_OneClerkThreeServersNoErrors_TestWriteReadBasic4" 0
-run_test "TestClerk_OneClerkThreeServersNoErrors_TestWriteSomeButNotAll" 1
+run_test "TestClerk_OneClerkThreeServersNoErrors_TestWriteSomeButNotAll" 0
+run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenBlockNoContention" 0
+run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenBlockOneWaiting" 0
+run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenBlockMultipleWaiting" 0
+run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenBlockOnlyOne" 0
 
 run_test "TestClerk_OneClerkFiveServersErrors_TestBasicOpenClose" 0
 run_test "TestClerk_OneClerkFiveServersErrors_TestCannotDeleteRootDir" 0
@@ -137,3 +141,9 @@ run_test "TestClerk_OneClerkFiveServersErrors_TestWriteClosedFile" 0
 run_test "TestClerk_OneClerkFiveServersErrors_TestWriteReadBasic" 0
 run_test "TestClerk_OneClerkFiveServersErrors_TestWriteReadBasic4" 0
 run_test "TestClerk_OneClerkFiveServersErrors_TestWriteSomeButNotAll" 0
+run_test "TestClerk_OneClerkFiveServersErrors_TestOpenBlockNoContention" 0
+run_test "TestClerk_OneClerkFiveServersErrors_TestOpenBlockOneWaiting" 0
+run_test "TestClerk_OneClerkFiveServersErrors_TestOpenBlockMultipleWaiting" 0
+run_test "TestClerk_OneClerkFiveServersErrors_TestOpenBlockOnlyOne" 0
+
+run_test "TestOneClerkFiveServersPartition" 11

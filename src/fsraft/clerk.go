@@ -56,6 +56,7 @@ func (ck *Clerk) Open(path string, mode filesystem.OpenMode, flags filesystem.Op
 	} else {
 		ad.DebugObj(ck, ad.RPC, "Received Blocking open for %v, "+
 			"removing the block flag and trying until it succeeds.", path)
+		// sanity check this? I am afraid it may be changing other flags accidentally?
 		flagsWithoutBlock := flags ^ filesystem.Block
 		ad.Assert(!filesystem.FlagIsSet(flagsWithoutBlock, filesystem.Block))
 		for {

@@ -3,20 +3,23 @@ package fsraft
 import (
 	fs "filesystem"
 	"fmt"
+	"log"
+	"math/rand"
+	"strconv"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
-// ===== proposed network partition test ======
 const electionTimeout = 1 * time.Second
 
-// UNVERIFIED - requesting review
-// Omitted the word Test fully so it doesn't get picked up yet
+// Specific tests ======================================================================================================
 func TestOneClerkFiveServersPartition(t *testing.T) {
 	const nservers = 5
 	cfg := make_config(t, nservers, false, -1)
 	defer cfg.cleanup()
-	clerk := cfg.makeClient(cfg.All())
+	clerk := cfg.makeClerk(cfg.All())
 	dataFile := "/myFile.txt"
 
 	// Equivalent to Put(cfg, clerk, "1", "13")
@@ -29,9 +32,9 @@ func TestOneClerkFiveServersPartition(t *testing.T) {
 	majority, minority := cfg.make_partition()
 	cfg.partition(majority, minority)
 
-	majorityClerk := cfg.makeClient(majority)
-	minorityClerkA := cfg.makeClient(minority)
-	minorityClerkB := cfg.makeClient(minority)
+	majorityClerk := cfg.makeClerk(majority)
+	minorityClerkA := cfg.makeClerk(minority)
+	minorityClerkB := cfg.makeClerk(minority)
 
 	//Equivalent to Put(cfg, clerkMajority, "1", "14")
 	fd = fs.HelpOpen(t, majorityClerk, dataFile, fs.ReadWrite, 0)
@@ -115,8 +118,8 @@ func TestOneClerkFiveServersPartition(t *testing.T) {
 	cfg.begin("Test: completion after heal")
 
 	cfg.ConnectAll()
-	cfg.ConnectClient(minorityClerkA, cfg.All())
-	cfg.ConnectClient(minorityClerkB, cfg.All())
+	cfg.ConnectClerk(minorityClerkA, cfg.All())
+	cfg.ConnectClerk(minorityClerkB, cfg.All())
 
 	time.Sleep(electionTimeout)
 
@@ -142,4 +145,255 @@ func TestOneClerkFiveServersPartition(t *testing.T) {
 
 	cfg.end()
 	return
+}
+
+// Generic tests =======================================================================================================
+
+func TestKVBasic(t *testing.T) {
+	// Basically use the filesystem as a key-value store
+	GenericTest(t, 1, false, false, false, -1)
+}
+
+// Generic test apparatus ==============================================================================================
+// Atomic get/put/append, key is the filename including the "/" and values
+// are the entire file contents.
+func Get(t *testing.T, clerk *Clerk, fileName string) string {
+	fileDescriptor := fs.HelpOpen(t, clerk, fileName, fs.ReadOnly, fs.Create|fs.Block)
+	fileLength := fs.HelpSeek(t, clerk, fileDescriptor, 0, fs.FromEnd)
+	fs.HelpSeek(t, clerk, fileDescriptor, 0, fs.FromBeginning)
+	_, dataBytes := fs.HelpRead(t, clerk, fileDescriptor, fileLength)
+	fs.HelpClose(t, clerk, fileDescriptor)
+	return string(dataBytes)
+}
+
+func Put(t *testing.T, clerk *Clerk, fileName string, newContents string) {
+	fileDescriptor := fs.HelpOpen(t, clerk, fileName, fs.WriteOnly, fs.Create|fs.Truncate|fs.Block)
+	fs.HelpWriteString(t, clerk, fileDescriptor, newContents)
+	fs.HelpClose(t, clerk, fileDescriptor)
+}
+
+func Append(t *testing.T, clerk *Clerk, fileName string, value string) {
+	fileDescriptor := fs.HelpOpen(t, clerk, fileName, fs.WriteOnly, fs.Block)
+	fs.HelpSeek(t, clerk, fileDescriptor, 0, fs.FromEnd)
+	fs.HelpWriteString(t, clerk, fileDescriptor, value)
+	fs.HelpClose(t, clerk, fileDescriptor)
+}
+
+// Basic test is as follows: one or more clerks submitting put/get/append
+// operations to set of servers for some period of time.  After the period is
+// over, test checks that all appended values are present and in order for a
+// particular key.  If unreliable is set, RPCs may fail.  If crash is set, the
+// servers crash after the period is over and restart.  If partitions is set,
+// the test repartitions the network concurrently with the clerks and servers. If
+// maxraftstate is a positive number, the size of the state for Raft (i.e., log
+// size) shouldn't exceed 2*maxraftstate.
+func GenericTest(t *testing.T, nClerks int, unreliable bool, crash bool, partitions bool, maxraftstate int) {
+
+	title := "Test: "
+	if unreliable {
+		// the network drops RPC requests and replies.
+		title = title + "unreliable net, "
+	}
+	if crash {
+		// peers re-start, and thus persistence must work.
+		title = title + "restarts, "
+	}
+	if partitions {
+		// the network may partition
+		title = title + "partitions, "
+	}
+	if maxraftstate != -1 {
+		title = title + "snapshots, "
+	}
+	if nClerks > 1 {
+		title = title + "many clerks"
+	} else {
+		title = title + "one clerk"
+	}
+
+	const nservers = 5
+	cfg := make_config(t, nservers, unreliable, maxraftstate)
+	defer cfg.cleanup()
+
+	cfg.begin(title)
+	fmt.Println(title)
+
+	clerkConnectedToAll := cfg.makeClerk(cfg.All())
+
+	partitionerShouldStop := int32(0)
+	clerksShouldStop := int32(0)
+	partitionerDoneCh := make(chan bool)
+	clerkChannels := make([]chan int, nClerks)
+	for i := 0; i < nClerks; i++ {
+		clerkChannels[i] = make(chan int)
+	}
+
+	for i := 0; i < 3; i++ {
+		// log.Printf("Iteration %v\n", clerkNum)
+		atomic.StoreInt32(&clerksShouldStop, 0)
+		atomic.StoreInt32(&partitionerShouldStop, 0)
+		go spawn_clerks_and_wait(t, cfg, nClerks, func(clerkNum int, myClerk *Clerk, t *testing.T) {
+			numWrites := 0
+			defer func() {
+				clerkChannels[clerkNum] <- numWrites
+			}()
+			//fileName := "/" + strconv.Itoa(clerkNum) + ".txt"
+			fileName := getFileName(clerkNum)
+			expectedContents := ""
+			Put(t, myClerk, fileName, expectedContents)
+			for atomic.LoadInt32(&clerksShouldStop) == 0 {
+				if (rand.Int() % 1000) < 500 {
+					toAppend := makeValue(clerkNum, numWrites)
+					Append(t, myClerk, fileName, toAppend)
+					expectedContents += toAppend
+					numWrites++
+				} else {
+					fileContents := Get(t, myClerk, fileName)
+					if fileContents != expectedContents {
+						t.Fatalf("get wrong value, fileName %v, wanted:\n\"%v\"\n, "+
+							"got\n\"%v\"\n", fileName, expectedContents, fileContents)
+					}
+				}
+			}
+		})
+
+		if partitions {
+			// Allow the clerks to perform some operations without interruption
+			time.Sleep(1 * time.Second)
+			go partitioner(t, cfg, partitionerDoneCh, &partitionerShouldStop)
+		}
+		time.Sleep(5 * time.Second)
+
+		atomic.StoreInt32(&clerksShouldStop, 1)      // tell clerks to quit
+		atomic.StoreInt32(&partitionerShouldStop, 1) // tell partitioner to quit
+
+		if partitions {
+			// log.Printf("wait for partitioner\n")
+			<-partitionerDoneCh
+			// reconnect network and submit a request. A clerk may
+			// have submitted a request in a minority.  That request
+			// won't return until that server discovers a new term
+			// has started.
+			cfg.ConnectAll()
+			// wait for a while so that we have a new term
+			time.Sleep(electionTimeout)
+		}
+
+		if crash {
+			// log.Printf("shutdown servers\n")
+			for i := 0; i < nservers; i++ {
+				cfg.ShutdownServer(i)
+			}
+			// Wait for a while for servers to shutdown, since
+			// shutdown isn't a real crash and isn't instantaneous
+			time.Sleep(electionTimeout)
+			// log.Printf("restart servers\n")
+			// crash and re-start all
+			for i := 0; i < nservers; i++ {
+				cfg.StartServer(i)
+			}
+			cfg.ConnectAll()
+		}
+
+		log.Printf("wait for clerks\n")
+		for clerkNum := 0; clerkNum < nClerks; clerkNum++ {
+			log.Printf("read from clerks %d\n", clerkNum)
+			numWrites := <-clerkChannels[clerkNum]
+			key := strconv.Itoa(clerkNum)
+			log.Printf("Check %v writes from clerk %d\n", numWrites, clerkNum)
+			// Make sure that the contents of that clerk's file are correct
+			fileContents := Get(t, clerkConnectedToAll, key)
+			checkClerkAppends(t, clerkNum, fileContents, numWrites)
+		}
+
+		if maxraftstate > 0 {
+			// Check maximum after the servers have processed all clerk
+			// requests and had time to checkpoint.
+			if cfg.LogSize() > 2*maxraftstate {
+				t.Fatalf("logs were not trimmed (%v > 2*%v)", cfg.LogSize(), maxraftstate)
+			}
+		}
+	}
+
+	cfg.end()
+}
+
+// spawn ncli clerks and wait until they are all done
+func spawn_clerks_and_wait(t *testing.T, cfg *config, nClerks int, fn func(clerkNum int, ck *Clerk, t *testing.T)) {
+	ca := make([]chan bool, nClerks)
+	for cli := 0; cli < nClerks; cli++ {
+		ca[cli] = make(chan bool)
+		go run_clerk(t, cfg, cli, ca[cli], fn)
+	}
+	log.Printf("spawn_clerks_and_wait: waiting for clerks")
+	for cli := 0; cli < nClerks; cli++ {
+		ok := <-ca[cli]
+		log.Printf("spawn_clerks_and_wait: clerk %d is done\n", cli)
+		if ok == false {
+			t.Fatalf("failure")
+		}
+	}
+}
+
+// a clerk runs the function f and then signals it is done
+func run_clerk(t *testing.T, cfg *config, me int, ca chan bool, fn func(me int, ck *Clerk, t *testing.T)) {
+	ok := false
+	defer func() { ca <- ok }()
+	ck := cfg.makeClerk(cfg.All())
+	fn(me, ck, t)
+	ok = true
+	cfg.deleteClerk(ck)
+}
+
+// Get a convenient value that will be written to a file and is easy to debug.
+func makeValue(clerkNum int, writeNum int) string {
+	return fmt.Sprintf("(%d, %d)", clerkNum, writeNum)
+}
+
+// repartition the servers periodically
+func partitioner(t *testing.T, cfg *config, doneChannel chan bool, shouldStop *int32) {
+	defer func() { doneChannel <- true }()
+	for atomic.LoadInt32(shouldStop) == 0 {
+		array := make([]int, cfg.n)
+		for i := 0; i < cfg.n; i++ {
+			array[i] = (rand.Int() % 2)
+		}
+		partition := make([][]int, 2)
+		for halfNum := 0; halfNum < 2; halfNum++ {
+			partition[halfNum] = make([]int, 0)
+			for serverNum := 0; serverNum < cfg.n; serverNum++ {
+				if array[serverNum] == halfNum {
+					partition[halfNum] = append(partition[halfNum], serverNum)
+				}
+			}
+		}
+		cfg.partition(partition[0], partition[1])
+		time.Sleep(electionTimeout + time.Duration(rand.Int63()%200)*time.Millisecond)
+	}
+}
+
+// Get the name of the file that clerk number clerkNum will write to.
+func getFileName(clerkNum int) string {
+	return "/" + strconv.Itoa(clerkNum) + ".txt"
+}
+
+// check that for a specific clerk all known appends are present in a value,
+// and in order
+func checkClerkAppends(t *testing.T, clerkNum int, fileContents string, count int) {
+	lastoff := -1
+	for writeNum := 0; writeNum < count; writeNum++ {
+		wanted := makeValue(clerkNum, writeNum)
+		off := strings.Index(fileContents, wanted)
+		if off < 0 {
+			t.Fatalf("%v missing element %v in Append result %v", clerkNum, wanted, fileContents)
+		}
+		off1 := strings.LastIndex(fileContents, wanted)
+		if off1 != off {
+			t.Fatalf("duplicate element %v in Append result", wanted)
+		}
+		if off <= lastoff {
+			t.Fatalf("wrong order for element %v in Append result", wanted)
+		}
+		lastoff = off
+	}
 }

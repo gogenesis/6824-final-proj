@@ -175,7 +175,7 @@ func (cfg *config) ConnectAll() {
 func (cfg *config) partition(p1 []int, p2 []int) {
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
-	ad.Debug(ad.RPC, "partition servers into: %v %v", p1, p2)
+	ad.Debug(ad.WARN, "partition servers into: %v %v", p1, p2)
 	for i := 0; i < len(p1); i++ {
 		cfg.disconnectUnlocked(p1[i], p2)
 		cfg.connectUnlocked(p1[i], p1)
@@ -189,6 +189,9 @@ func (cfg *config) partition(p1 []int, p2 []int) {
 // Create a clerk with clerk specific server names.
 // Give it connections to all of the servers, but for
 // now enable only connections to servers in to[].
+func (cfg *config) makeClerk(to []int) *Clerk {
+	return cfg.makeClient(to)
+}
 func (cfg *config) makeClient(to []int) *Clerk {
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
@@ -209,6 +212,9 @@ func (cfg *config) makeClient(to []int) *Clerk {
 	return ck
 }
 
+func (cfg *config) deleteClerk(ck *Clerk) {
+	cfg.deleteClient(ck)
+}
 func (cfg *config) deleteClient(ck *Clerk) {
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
@@ -228,6 +234,10 @@ func (cfg *config) ConnectClientUnlocked(ck *Clerk, to []int) {
 		s := endnames[to[j]]
 		cfg.net.Enable(s, true)
 	}
+}
+
+func (cfg *config) ConnectClerk(ck *Clerk, to []int) {
+	cfg.ConnectClient(ck, to)
 }
 
 func (cfg *config) ConnectClient(ck *Clerk, to []int) {
@@ -256,6 +266,7 @@ func (cfg *config) DisconnectClient(ck *Clerk, from []int) {
 func (cfg *config) ShutdownServer(i int) {
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
+	ad.Debug(ad.WARN, "Shutting down server %d", i)
 
 	cfg.disconnectUnlocked(i, cfg.All())
 
@@ -286,6 +297,7 @@ func (cfg *config) ShutdownServer(i int) {
 
 // If restart servers, first call ShutdownServer
 func (cfg *config) StartServer(i int) {
+	ad.Debug(ad.RPC, "Starting Server %d", i)
 	cfg.mu.Lock()
 
 	// a fresh set of outgoing ClientEnd names.
