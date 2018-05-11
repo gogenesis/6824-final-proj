@@ -576,6 +576,7 @@ func TestWrite1MBytes(t *testing.T, fs FileSystem) {
 func TestWrite10MBytes(t *testing.T, fs FileSystem) {
 	TestWriteNBytesIter(t, fs, "/wr-10m.txt", 10000000, 5)
 }
+
 //func TestWrite100MBytes(t *testing.T, fs FileSystem) {
 //	TestWriteNBytesIter(t, fs, "/wr-100m.txt", 100000000, 3)
 //}
