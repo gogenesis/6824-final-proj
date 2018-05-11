@@ -20,6 +20,8 @@ type FileSystem interface {
 	// If the file exists and is not already opened, the file is opened and the Create flag is ignored.
 	// If the file does not exist and the Create flag is included, creates it and then opens it.
 	// If the file does not exist and the Create flag is not included, returns NotFound error.
+	// Even if the Create flag is specified, it is still possible to receive a NotFound error if the
+	// parent directory does not exist or if the path is not well-formed (e.g, it does not begin with "/")
 	// If the Truncate flag is set, truncates the file size to 0 (if opening succeeds).
 	// If the file is already open, if the Block flag is included, blocks until it is closed; if the
 	// Block flag is not included, returns AlreadyOpen.

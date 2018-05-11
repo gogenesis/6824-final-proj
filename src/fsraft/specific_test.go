@@ -147,12 +147,7 @@ func TestOneClerkFiveServersPartition(t *testing.T) {
 	return
 }
 
-// Generic tests =======================================================================================================
-
-func TestKVBasic(t *testing.T) {
-	// Basically use the filesystem as a key-value store
-	GenericTest(t, 1, false, false, false, -1)
-}
+// Generic test apparatus =======================================================================================================
 
 // Generic test apparatus ==============================================================================================
 // Atomic get/put/append, key is the filename including the "/" and values
@@ -299,7 +294,7 @@ func GenericTest(t *testing.T, nClerks int, unreliable bool, crash bool, partiti
 		for clerkNum := 0; clerkNum < nClerks; clerkNum++ {
 			log.Printf("read from clerks %d\n", clerkNum)
 			numWrites := <-clerkChannels[clerkNum]
-			key := strconv.Itoa(clerkNum)
+			key := getFileName(clerkNum)
 			log.Printf("Check %v writes from clerk %d\n", numWrites, clerkNum)
 			// Make sure that the contents of that clerk's file are correct
 			fileContents := Get(t, clerkConnectedToAll, key)
@@ -396,4 +391,67 @@ func checkClerkAppends(t *testing.T, clerkNum int, fileContents string, count in
 		}
 		lastoff = off
 	}
+}
+
+// Generic tests =======================================================================================================
+
+func TestBasicKV(t *testing.T) {
+	// Basically use the filesystem as a key-value store
+	GenericTest(t, 1, false, false, false, -1)
+}
+
+func TestConcurrentKV(t *testing.T) {
+	GenericTest(t, 5, false, false, false, -1)
+}
+
+func TestUnreliableKV(t *testing.T) {
+	GenericTest(t, 5, true, false, false, -1)
+}
+
+func TestManyPartitionsOneClientKV(t *testing.T) {
+	GenericTest(t, 1, false, false, true, -1)
+}
+
+func TestManyPartitionsManyClientsKV(t *testing.T) {
+	GenericTest(t, 5, false, false, true, -1)
+}
+
+func TestPersistOneClientKV(t *testing.T) {
+	GenericTest(t, 1, false, true, false, -1)
+}
+
+func TestPersistConcurrentKV(t *testing.T) {
+	GenericTest(t, 5, false, true, false, -1)
+}
+
+func TestPersistConcurrentUnreliableKV(t *testing.T) {
+	GenericTest(t, 5, true, true, false, -1)
+}
+
+func TestPersistPartitionKV(t *testing.T) {
+	GenericTest(t, 5, false, true, true, -1)
+}
+
+func TestPersistPartitionUnreliableKV(t *testing.T) {
+	GenericTest(t, 5, true, true, true, -1)
+}
+
+func TestSnapshotRecoverKV(t *testing.T) {
+	GenericTest(t, 1, false, true, false, 1000)
+}
+
+func TestSnapshotRecoverManyClientsKV(t *testing.T) {
+	GenericTest(t, 20, false, true, false, 1000)
+}
+
+func TestSnapshotUnreliableKV(t *testing.T) {
+	GenericTest(t, 5, true, false, false, 1000)
+}
+
+func TestSnapshotUnreliableRecoverKV(t *testing.T) {
+	GenericTest(t, 5, true, true, false, 1000)
+}
+
+func TestSnapshotUnreliableRecoverConcurrentPartitionKV(t *testing.T) {
+	GenericTest(t, 5, true, true, true, 1000)
 }
