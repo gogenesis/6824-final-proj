@@ -49,8 +49,7 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestWrite8Bytes,
 	TestWrite1KBytes,
 	TestWrite1MBytes,
-	//TestWrite10MBytes,
-	//TestWrite100MBytes,
+	TestWrite10MBytes,
 	TestReadClosedFile,
 	TestRndWriteRead1ByteSimple,
 	TestRndWriteRead8BytesSimple,
@@ -59,8 +58,7 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestRndWriteRead64BytesSimple,
 	TestRndWriteRead6400BytesIter64K,
 	TestRndWriteRead512KBIter1MB,
-	//TestRndWriteRead64KBIter10MB,
-	//TestRndWriteRead1MBIter100MB,
+	TestRndWriteRead128KBIter10MB,
 	TestMkdir,
 	TestMkdirTree,
 	TestOpenCloseDeleteAcrossDirectories,
@@ -97,8 +95,7 @@ var testNames = []string{
 	"TestWrite8Bytes",
 	"TestWrite1KBytes",
 	"TestWrite1MBytes",
-	//"TestWrite10MBytes",
-	//"TestWrite100MBytes",
+	"TestWrite10MBytes",
 	"TestReadClosedFile",
 	"TestRndWriteRead1ByteSimple",
 	"TestRndWriteRead8BytesSimple",
@@ -106,8 +103,7 @@ var testNames = []string{
 	"TestRndWriteRead8BytesIter64",
 	"TestRndWriteRead6400BytesIter64K",
 	"TestRndWriteRead512KBIter1MB",
-	//"TestRndWriteRead64KBIter10MB",
-	//"TestRndWriteRead1MBIter100MB",
+	"TestRndWriteRead128KBIter10MB",
 	"TestRndWriteReadVerfiyHoleExpansion",
 }
 
@@ -214,7 +210,6 @@ func HelpMakeRndBytes(t *testing.T, n int) []byte {
 	return rndBytes
 }
 
-// error checked helper
 func HelpSeek(t *testing.T, fs FileSystem,
 	fd int, offset int, mode SeekMode) int {
 	newPosition, err := fs.Seek(fd, offset, mode)
@@ -226,7 +221,6 @@ func HelpSeek(t *testing.T, fs FileSystem,
 	return newPosition
 }
 
-// error checked helper
 func HelpRead(t *testing.T, fs FileSystem, fd int, numBytes int) (int, []byte) {
 	numRead, data, err := fs.Read(fd, numBytes)
 	ad.AssertNoErrorT(t, err)
@@ -234,7 +228,6 @@ func HelpRead(t *testing.T, fs FileSystem, fd int, numBytes int) (int, []byte) {
 	return numRead, data
 }
 
-// error checked helper
 func HelpWriteBytes(t *testing.T, fs FileSystem, fd int, bytes []byte) int {
 	numBytes := len(bytes)
 	numWritten, err := fs.Write(fd, numBytes, bytes)
@@ -247,7 +240,6 @@ func HelpWriteString(t *testing.T, fs FileSystem, fd int, contents string) int {
 	return HelpWriteBytes(t, fs, fd, []byte(contents))
 }
 
-// error checked helper
 func HelpReadWrite(t *testing.T, fs FileSystem, path string, contents string) int {
 	fd := HelpOpen(t, fs, path, ReadWrite, Create)
 	HelpSeek(t, fs, fd, 0, FromBeginning)
@@ -255,17 +247,12 @@ func HelpReadWrite(t *testing.T, fs FileSystem, path string, contents string) in
 	ad.AssertExplainT(t, nBytes == len(contents), "%d bytes written vs %d", nBytes, len(contents))
 	HelpSeek(t, fs, fd, 0, FromBeginning) //rewind to start reading
 	nBytes, data := HelpRead(t, fs, fd, len(contents))
-	for bite := 0; bite < len(contents); bite++ { //byte is reserved
+	for bite := 0; bite < len(contents); bite++ { //'byte' is reserved
 		ad.AssertExplainT(t, data[bite] == contents[bite],
 			"read data %s vs %s", data[bite], contents[bite])
 	}
 	return nBytes
 }
-
-// ===== the line in the sand =====
-// "TestMkdir",
-//	"TestMkdirTree",
-//	"TestOpenCloseDeleteAcrossDirectories",
 
 // ===== BEGIN OPEN CLOSE TESTS ======
 
@@ -392,7 +379,8 @@ func TestOpenAppend(t *testing.T, fs FileSystem) {
 	// Seek to 0 from current to get the current position.
 	// Make sure it is the right distance from the beginning of the file.
 	pos := HelpSeek(t, fs, fd, 0, FromCurrent)
-	ad.AssertExplainT(t, pos == contentLengthBytes, "Opened a file for append and expected "+
+	ad.AssertExplainT(t, pos == contentLengthBytes,
+   "Opened a file for append and expected "+
 		"the offset to be at the end of the file (position %d), but it was actually at position %d.")
 
 	// Now make sure that position was actually at the end of the file.
@@ -403,7 +391,7 @@ func TestOpenAppend(t *testing.T, fs FileSystem) {
 // open and close files checking all FDs open correctly up to limit,
 // open a few past the limit, confirm we get errors, then close and delete all.
 func TestOpenCloseDeleteMaxFD(t *testing.T, fs FileSystem) {
-	maxFDCount := MaxActiveFDs
+	maxFDCount := 128 //filesystem.MaxActiveFDs.
 	maxFD := maxFDCount + 2 //max is offby1, & stdin, out, err...
 	fmtStr := "/max-fd-%d.txt"
 	prevFD := 0
@@ -453,15 +441,13 @@ func TestOpenCloseDeleteRoot(t *testing.T, fs FileSystem) {
 	HelpDelete(t, fs, "/baz")
 }
 
+//somewhat redundant with TestOpenCloseDeleteMaxFD
 func TestOpenCloseDeleteRootMax(t *testing.T, fs FileSystem) {
-	maxFD := 64 //XXX update once we set it!!
-	fds := HelpBatchOpen(t, fs, 64, "/max-root-opens-%d", ReadWrite, Create)
+	maxFD := 128
+	fds := HelpBatchOpen(t, fs, maxFD, "/max-root-opens-%d", ReadWrite, Create)
 	HelpBatchClose(t, fs, fds)
 	HelpBatchDelete(t, fs, maxFD, "/max-root-opens-%d")
 }
-
-//  ================== the line in the sand ====================
-//  keeps moving down as tests begin passing and stay passing!
 
 // ===== END OPEN CLOSE TESTS =====
 
@@ -478,7 +464,8 @@ func TestSeekErrorBadOffsetOperation(t *testing.T, fs FileSystem) {
 	fd := HelpOpen(t, fs, filename, ReadWrite, Create)
 
 	_, err := fs.Seek(fd, -1, FromBeginning)
-	ad.AssertExplainT(t, err == IllegalArgument, "Attempted to Seek to before the beginning of a file. "+
+	ad.AssertExplainT(t, err == IllegalArgument,
+   "Attempted to Seek to before the beginning of a file. "+
 		"Expected IllegalArgument error, got %v", err)
 }
 
@@ -503,9 +490,6 @@ func TestSeekOffEOF(t *testing.T, fs FileSystem) {
 }
 
 // ===== BEGIN ITERATIVE WRITE CHUNK TESTS EXPANDING FILES =====
-
-// TODO need a debug interface to simulate the test datastore runs out of space...
-// TODO need a debug interface to simulate the test datastore has an IO error...
 
 func TestWriteClosedFile(t *testing.T, fs FileSystem) {
 	n, err := fs.Write(555, 5, HelpMakeRndBytes(t, 5)) //must be uninit
@@ -536,20 +520,16 @@ func TestWrite8Bytes(t *testing.T, fs FileSystem) {
 }
 
 func TestWrite1KBytes(t *testing.T, fs FileSystem) {
-	TestWriteNBytesIter(t, fs, "/wr-1k.txt", 1000, 5)
+	TestWriteNBytesIter(t, fs, "/wr-1k.txt", 1000, 1)
 }
 
 func TestWrite1MBytes(t *testing.T, fs FileSystem) {
-	TestWriteNBytesIter(t, fs, "/wr-1m.txt", 1000000, 1)
+	TestWriteNBytesIter(t, fs, "/wr-1m.txt", 128000, 8)
 }
 
 func TestWrite10MBytes(t *testing.T, fs FileSystem) {
-	TestWriteNBytesIter(t, fs, "/wr-10m.txt", 10000000, 1)
+	TestWriteNBytesIter(t, fs, "/wr-10m.txt", 128000, 80)
 }
-
-//func TestWrite100MBytes(t *testing.T, fs FileSystem) {
-//	TestWriteNBytesIter(t, fs, "/wr-100m.txt", 100000000, 3)
-//}
 
 // ===== BEGIN ITERATIVE WRITE & READ CHUNK TESTS EXPANDING FILES =====
 
@@ -656,13 +636,9 @@ func TestRndWriteRead512KBIter1MB(t *testing.T, fs FileSystem) {
 	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-1M.txt", 512000, 2)
 }
 
-func TestRndWriteRead64KBIter10MB(t *testing.T, fs FileSystem) {
-	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-10M.txt", 64000, 157)
+func TestRndWriteRead128KBIter10MB(t *testing.T, fs FileSystem) {
+	TestRndWriteReadNBytesIter(t, fs, "/r-64k-iter-10M.txt", 128000, 80)
 }
-
-//func TestRndWriteRead1MBIter100MB(t *testing.T, fs FileSystem) {
-//	TestRndWriteReadNBytesIter(t, fs, "/r-1MB-iter-100M.txt", 1000000, 10)
-//}
 
 func TestRndWriteReadVerfiyHoleExpansion(t *testing.T, fs FileSystem) {
 	fd := HelpOpen(t, fs, "/few-holey-bytes.txt", ReadWrite, Create)
@@ -686,14 +662,13 @@ func TestRndWriteReadVerfiyHoleExpansion(t *testing.T, fs FileSystem) {
 	HelpVerifyBytes(t, shore, shoreRd, "shore deviation")
 
 	// verify the zero filled hole appeared
-	_, holeRd := HelpRead(t, fs, fd, nBytes) // offset now 128 (end of hole / beginning of island)
+	_, holeRd := HelpRead(t, fs, fd, nBytes) // offset now 128 (end of hole / start island)
 	HelpVerifyBytes(t, HelpMakeZeros(t, 64), holeRd, "hole deviation")
 
 	// verify island
 	_, islandRd := HelpRead(t, fs, fd, 128) // offset now 256
 	HelpVerifyBytes(t, island, islandRd, "island deviation")
 
-	// PUT IN OWN TEST EVENTUALLY
 	// verify read past EOF results in 0 bytes read
 	nRd, data, err := fs.Read(fd, 1) // seek past EOF at 257
 	ad.AssertExplainT(t, nRd == 0, "EOF read %d", nRd)
@@ -704,13 +679,7 @@ func TestRndWriteReadVerfiyHoleExpansion(t *testing.T, fs FileSystem) {
 	fs.Delete("/few-holey-bytes.txt")
 }
 
-// ===== THE LINE IN THE SAND ==========
-// TOMORROW: Wed 5/9/18
-
 // ===== BEGIN WRITE READ HOLE TESTS =====
-
-// TODO these will start writing larger amounts of data
-// TODO the next set of tests will create holes, seek around, fill files with data
 
 // ===== BEGIN MKDIR TESTS =====
 
