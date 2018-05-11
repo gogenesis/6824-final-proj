@@ -173,23 +173,28 @@ func genPrecheckinScript(params genFileParameters) {
 		genFile.Write([]byte(fmt.Sprintf(" run_test \"Test%s_%s\" 1\n", "MemoryFS", testName)))
 	}
 	genFile.Write([]byte("cd $SCRIPT_DIR/../fsraft\n"))
-	genFile.Write([]byte("echo Begin Raft Difficulty 1 Tests - Clerk_OneClerkThreeServersNoErrors Tests\n"))
+	genFile.Write([]byte("echo Begin Raft Difficulty 1 Tests - Reliable Network - Clerk_OneClerkThreeServersNoErrors Tests\n"))
 	for testName, _ := range params.testNamesToMethodBodies {
 		genFile.Write([]byte(fmt.Sprintf(" run_test \"Test%s_%s\" 1\n", "Clerk_OneClerkThreeServersNoErrors", testName)))
 	}
-	genFile.Write([]byte("echo Begin Raft Difficulty 2 Tests - Clerk_OneClerkFiveServersUnreliableNet Tests\n"))
+	genFile.Write([]byte("echo Begin Raft Difficulty 2 Tests - Lossy Network - Clerk_OneClerkFiveServersUnreliableNet Tests\n"))
 	for testName, _ := range params.testNamesToMethodBodies {
 		genFile.Write([]byte(fmt.Sprintf(" run_test \"Test%s_%s\" 1\n", "Clerk_OneClerkFiveServersUnreliableNet", testName)))
 	}
-
+	genFile.Write([]byte("echo Begin Raft Difficulty 3 Tests - Snapshots - Clerk_OneClerkFiveServersUnreliableNet Tests\n"))
 	for testName, _ := range params.testNamesToMethodBodies {
 		genFile.Write([]byte(fmt.Sprintf(" run_test \"Test%s_%s\" 1\n", "OneClerkThreeServersSnapshots", testName)))
 	}
+
+   // Singleton tests
+	genFile.Write([]byte(" echo \"Begin Singleton Tests\"\n"))
+   genFile.Write([]byte(" run_test \"TestOneClerkFiveServersPartition\" 1\n"))
+   genFile.Write([]byte(" run_test \"TestKVBasic\" 1\n"))
+
+   // must come last
 	genFile.Write([]byte("if [ ! -z $JENKINS ]; then\n"))
 	genFile.Write([]byte("  exit $JENKINS_FAIL\n")) //surface any fails to jenkins
 	genFile.Write([]byte("fi\n"))
-	// if we get past here for more difficulties, great!
-
 	fmt.Printf("Generated full precheckin script at %v\n", filePath)
 }
 
