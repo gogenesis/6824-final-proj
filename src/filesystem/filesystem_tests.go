@@ -380,8 +380,8 @@ func TestOpenAppend(t *testing.T, fs FileSystem) {
 	// Make sure it is the right distance from the beginning of the file.
 	pos := HelpSeek(t, fs, fd, 0, FromCurrent)
 	ad.AssertExplainT(t, pos == contentLengthBytes,
-   "Opened a file for append and expected "+
-		"the offset to be at the end of the file (position %d), but it was actually at position %d.")
+		"Opened a file for append and expected "+
+			"the offset to be at the end of the file (position %d), but it was actually at position %d.")
 
 	// Now make sure that position was actually at the end of the file.
 	newPos := HelpSeek(t, fs, fd, 0, FromEnd)
@@ -391,7 +391,7 @@ func TestOpenAppend(t *testing.T, fs FileSystem) {
 // open and close files checking all FDs open correctly up to limit,
 // open a few past the limit, confirm we get errors, then close and delete all.
 func TestOpenCloseDeleteMaxFD(t *testing.T, fs FileSystem) {
-	maxFDCount := 128 //filesystem.MaxActiveFDs.
+	maxFDCount := 128       //filesystem.MaxActiveFDs.
 	maxFD := maxFDCount + 2 //max is offby1, & stdin, out, err...
 	fmtStr := "/max-fd-%d.txt"
 	prevFD := 0
@@ -465,8 +465,8 @@ func TestSeekErrorBadOffsetOperation(t *testing.T, fs FileSystem) {
 
 	_, err := fs.Seek(fd, -1, FromBeginning)
 	ad.AssertExplainT(t, err == IllegalArgument,
-   "Attempted to Seek to before the beginning of a file. "+
-		"Expected IllegalArgument error, got %v", err)
+		"Attempted to Seek to before the beginning of a file. "+
+			"Expected IllegalArgument error, got %v", err)
 }
 
 func TestSeekOffEOF(t *testing.T, fs FileSystem) {
