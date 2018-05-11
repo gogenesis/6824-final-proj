@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
+	"time"
 )
 
 // Functionality tests for a FileSystem go here.
@@ -36,6 +37,10 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestOpenAppend,
 	TestOpenCloseDeleteRoot,
 	TestOpenCloseDeleteRootMax,
+	TestOpenBlockNoContention,
+	TestOpenBlockOneWaiting,
+	TestOpenBlockMultipleWaiting,
+	TestOpenBlockOnlyOne,
 	TestSeekErrorBadFD,
 	TestSeekErrorBadOffsetOperation,
 	TestSeekOffEOF,
@@ -65,7 +70,7 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestMkdirNotFound,
 	TestMkdirAlreadyExists,
 	TestRndWriteReadVerfiyHoleExpansion,
-	TestCannotDeleteRootDir,
+	TestDeleteCannotDeleteRootDir,
 }
 
 var testNames = []string{
@@ -449,6 +454,166 @@ func TestOpenCloseDeleteRootMax(t *testing.T, fs FileSystem) {
 	HelpBatchDelete(t, fs, maxFD, "/max-root-opens-%d")
 }
 
+// How long to wait for things to happen before deciding
+// that something was going to take forever.
+const WaitTime = time.Second
+
+func TestOpenBlockNoContention(t *testing.T, fs FileSystem) {
+	// Make sure that if no one has a file open, an Open with the Block flag
+	// succeeds immediately.
+
+	// Multithreading is needed here to make sure that if it actually
+	// does take forever, this test fails instead of hanging.
+	openDone := make(chan int)
+	go func() {
+		fd := HelpOpen(t, fs, "/file.txt", ReadOnly, Create|Block)
+		openDone <- fd
+	}()
+
+	select {
+	case fd := <-openDone:
+		// the open succeeded, we pass.
+		HelpClose(t, fs, fd)
+	case <-time.After(WaitTime):
+		t.Fatalf("Blocking open with no contention took too long!")
+	}
+}
+
+func TestOpenBlockOneWaiting(t *testing.T, fs FileSystem) {
+	// Make sure that if one thread is waiting on a blocking open,
+	// they get it when it is closed (and not before).
+	fd := HelpOpen(t, fs, "/file.txt", ReadOnly, Create)
+
+	// Start a blocking open in another thread.
+	otherOpenFinished := make(chan int)
+	go func() {
+		fd2, _ := fs.Open("/file.txt", ReadOnly, Block)
+		otherOpenFinished <- fd2
+	}()
+
+	// The file has not been closed, so the blocking open should not complete.
+	select {
+	case <-otherOpenFinished:
+		t.Fatalf("Blocking open completed, but it shouldn't have!")
+	case <-time.After(WaitTime):
+		// Do nothing and proceed with the test.
+	}
+
+	HelpClose(t, fs, fd)
+
+	// Now, blocking open should have finished.
+	fd2 := <-otherOpenFinished
+	HelpClose(t, fs, fd2)
+}
+
+func TestOpenBlockMultipleWaiting(t *testing.T, fs FileSystem) {
+	// Make sure that if multiple people are waiting on a blocking open,
+	// exactly on of them gets it.
+	fd := HelpOpen(t, fs, "/file.txt", ReadOnly, Create)
+
+	// Start a blocking open in two other threads.
+	// This thread is later referred to as "thread #1" and these two are threads #2 and #3 respectively.
+	secondOpenFinished := make(chan int)
+	go func() {
+		fd2 := HelpOpen(t, fs, "/file.txt", ReadOnly, Block)
+		secondOpenFinished <- fd2
+	}()
+	thirdOpenFinished := make(chan int)
+	go func() {
+		fd3 := HelpOpen(t, fs, "/file.txt", ReadOnly, Block)
+		thirdOpenFinished <- fd3
+	}()
+
+	// The file has not been closed, so the blocking open should not complete.
+	select {
+	case <-secondOpenFinished:
+		t.Fatalf("Blocking open in thread #2 completed, but it shouldn't have!")
+	case <-thirdOpenFinished:
+		t.Fatalf("Blocking open in thread #3 completed, but it shouldn't have!")
+	case <-time.After(WaitTime):
+		// Do nothing and proceed with the test.
+	}
+
+	HelpClose(t, fs, fd)
+
+	// Now, exactly one blocking open should have finished.
+	var fdToClose int
+	var whichSucceeded int
+	select {
+	case fdToClose = <-secondOpenFinished:
+		whichSucceeded = 2
+		select {
+		case <-thirdOpenFinished:
+			t.Fatalf("Both blocking opens completed!")
+		case <-time.After(WaitTime):
+			// #2 completed, #3 did not. This is okay.
+		}
+	case fdToClose = <-thirdOpenFinished:
+		whichSucceeded = 3
+		select {
+		case <-secondOpenFinished:
+			t.Fatalf("Both blocking opens completed!")
+		case <-time.After(WaitTime):
+			// #3 completed, #2 did not. This is okay.
+		}
+	case <-time.After(WaitTime):
+		t.Fatalf("File was closed, but neither waiting block completed!")
+	}
+
+	// Now close whichever one succeeded and verify that the last one gets the file.
+	HelpClose(t, fs, fdToClose)
+	switch whichSucceeded {
+	case 2:
+		// now the third one should be done
+		select {
+		case fd3 := <-thirdOpenFinished:
+			// Success!
+			HelpClose(t, fs, fd3)
+		case <-time.After(WaitTime):
+			t.Fatalf("Threads #1 and #2 opened and closed a file, but #3 didn't open it!")
+		}
+	case 3:
+		// now the second one should be done
+		select {
+		case fd2 := <-secondOpenFinished:
+			// Success!
+			HelpClose(t, fs, fd2)
+		case <-time.After(WaitTime):
+			t.Fatalf("Threads #1 and #3 opened and closed a file, but #2 didn't open it!")
+		}
+	default:
+		panic("Something went wrong with the test, should never get here")
+	}
+}
+
+func TestOpenBlockOnlyOne(t *testing.T, fs FileSystem) {
+	// Tests another potential bug that could let a fle be opened in multiple places.
+	// Makes sure that if a file is closed twice, you can't have two people opening it.
+	filename := "/file.txt"
+	fd := HelpOpen(t, fs, filename, ReadOnly, Create)
+	HelpClose(t, fs, fd)
+	fd = HelpOpen(t, fs, filename, ReadOnly, 0)
+	HelpClose(t, fs, fd)
+
+	// Should succeed.
+	fd = HelpOpen(t, fs, filename, ReadOnly, Block)
+	// But now another attempt to open should block.
+
+	otherOpenFinished := make(chan int)
+	go func() {
+		fd2, _ := fs.Open(filename, ReadOnly, Block)
+		otherOpenFinished <- fd2
+	}()
+	select {
+	case <-otherOpenFinished:
+		t.Fatalf("Blocking open completed, but it shouldn't have!")
+	case <-time.After(WaitTime):
+		// We passed
+	}
+
+	HelpClose(t, fs, fd)
+}
+
 // ===== END OPEN CLOSE TESTS =====
 
 // ===== BEGIN OPEN CLOSE SEEK & DELETE TESTS =====
@@ -729,7 +894,7 @@ func TestOpenCloseDeleteAcrossDirectories(t *testing.T, fs FileSystem) {
 	HelpDelete(t, fs, "/dir3")
 }
 
-func TestCannotDeleteRootDir(t *testing.T, fs FileSystem) {
+func TestDeleteCannotDeleteRootDir(t *testing.T, fs FileSystem) {
 	success, err := fs.Delete("/")
 	ad.AssertExplainT(t, !success, "Attempted to delete the root directory of a filesystem, expected success=false, "+
 		"got success=true.")

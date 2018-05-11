@@ -1,9 +1,6 @@
 // This program generates combination_tests.go. It can be invoked by running "go generate".
 //
 // Also, because this program is executable, it must be in package main.
-// The compiler requires that it be in a folder named main, but
-// we don't want to store it in a folder named main, so we tell the compiler to ignore this file
-// when building with this second magic comment.
 //
 
 package main
@@ -73,8 +70,8 @@ func main() {
 
 	genTestFile(combinationTestGenParams)
 
-   // hacky, we are just using the core test names from memoryFSTestGenParams 
-   genPrecheckinScript(memoryFSTestGenParams)
+	// hacky, we are just using the core test names from memoryFSTestGenParams
+	genPrecheckinScript(memoryFSTestGenParams)
 }
 
 func genTestFile(params genFileParameters) {
@@ -118,80 +115,80 @@ func assertNoError(e error) {
 }
 
 func genPrecheckinScript(params genFileParameters) {
-   filePath := "../test/run_precheckin_tests.sh"
+	filePath := "../test/run_precheckin_tests.sh"
 	fmt.Printf("Generating %v\n", filePath)
-   genFile, err := os.Create(filePath)
+	genFile, err := os.Create(filePath)
 	assertNoError(err)
 	defer genFile.Close()
 
-   genFile.Write([]byte("#!/usr/bin/env bash\n"))
-   genFile.Write([]byte("\n"))
-   genFile.Write([]byte("export JENKINS_FAIL=0\n"))
-   genFile.Write([]byte("SCRIPT_DIR=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )\" && pwd )\"\n"))
-   genFile.Write([]byte("mkdir -p $SCRIPT_DIR/outfiles\n"))
-   genFile.Write([]byte("if [ -z $JENKINS ]; then\n"))
-   genFile.Write([]byte("  rm $SCRIPT_DIR/outfiles/*\n"))
-   genFile.Write([]byte("fi\n"))
-   genFile.Write([]byte("touch $SCRIPT_DIR/outfiles/log\n"))
-   genFile.Write([]byte("\n"))
-   genFile.Write([]byte("iter() {\n"))
-   genFile.Write([]byte("        testname=\"$1\" \n"))
-   genFile.Write([]byte("        index=\"$2\"\n"))
-   genFile.Write([]byte("        outfile=\"$SCRIPT_DIR/outfiles/${testname}.${index}.out\"\n"))
-   genFile.Write([]byte("        touch \"$outfile\"\n"))
-   genFile.Write([]byte("        #echo \"running ${testname}.${index}\"\n"))
-   genFile.Write([]byte(""))
-   genFile.Write([]byte("        if [ -z $JENKINS ]; then\n"))
-   genFile.Write([]byte("           go test -run \"$testname\" > \"$outfile\" 2>&1\n"))
-   genFile.Write([]byte("           exit_code=$?\n"))
-   genFile.Write([]byte("        else\n"))
-   genFile.Write([]byte("           $GOBIN test -run \"$testname\" > \"$outfile\" 2>&1\n"))
-   genFile.Write([]byte("           exit_code=$?\n"))
-   genFile.Write([]byte("        fi\n"))
-   genFile.Write([]byte(""))
-   genFile.Write([]byte("        if [ $exit_code == 0 ]; then\n"))
-   genFile.Write([]byte("                echo \"${testname} success ${index}\" | tee -a $SCRIPT_DIR/outfiles/log\n"))
-   genFile.Write([]byte("                rm \"$outfile\"\n"))
-   genFile.Write([]byte("        else\n"))
-   genFile.Write([]byte("                echo \"${testname} FAIL ${index}!\" | tee -a $SCRIPT_DIR/outfiles/log\n"))
-   genFile.Write([]byte("                export JENKINS_FAIL=1\n"))
-   genFile.Write([]byte("        fi\n"))
-   genFile.Write([]byte("}\n"))
-   genFile.Write([]byte("\n"))
-   genFile.Write([]byte("run_test() {\n"))
-   genFile.Write([]byte("        testname=\"$1\"\n"))
-   genFile.Write([]byte("        quantity=\"$2\"\n"))
-   genFile.Write([]byte("        let n=0 # \n"))
-   genFile.Write([]byte("        #echo \"running $testname $quantity times\"\n"))
-   genFile.Write([]byte("        while [ $n -lt ${quantity} ]; do\n"))
-   genFile.Write([]byte("                let n++\n"))
-   genFile.Write([]byte("                time iter $testname $n\n"))
-   genFile.Write([]byte("        done\n"))
-   genFile.Write([]byte("}\n"))
-   genFile.Write([]byte("\n"))
-   //@dedup when too painful to update to with new difficulties
-   genFile.Write([]byte("cd $SCRIPT_DIR/../memoryFS\n"))
-   genFile.Write([]byte("echo Begin Core MemoryFS Tests\n"))
+	genFile.Write([]byte("#!/usr/bin/env bash\n"))
+	genFile.Write([]byte("\n"))
+	genFile.Write([]byte("export JENKINS_FAIL=0\n"))
+	genFile.Write([]byte("SCRIPT_DIR=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )\" && pwd )\"\n"))
+	genFile.Write([]byte("mkdir -p $SCRIPT_DIR/outfiles\n"))
+	genFile.Write([]byte("if [ -z $JENKINS ]; then\n"))
+	genFile.Write([]byte("  rm $SCRIPT_DIR/outfiles/*\n"))
+	genFile.Write([]byte("fi\n"))
+	genFile.Write([]byte("touch $SCRIPT_DIR/outfiles/log\n"))
+	genFile.Write([]byte("\n"))
+	genFile.Write([]byte("iter() {\n"))
+	genFile.Write([]byte("        testname=\"$1\" \n"))
+	genFile.Write([]byte("        index=\"$2\"\n"))
+	genFile.Write([]byte("        outfile=\"$SCRIPT_DIR/outfiles/${testname}.${index}.out\"\n"))
+	genFile.Write([]byte("        touch \"$outfile\"\n"))
+	genFile.Write([]byte("        #echo \"running ${testname}.${index}\"\n"))
+	genFile.Write([]byte(""))
+	genFile.Write([]byte("        if [ -z $JENKINS ]; then\n"))
+	genFile.Write([]byte("           go test -run \"$testname\" > \"$outfile\" 2>&1\n"))
+	genFile.Write([]byte("           exit_code=$?\n"))
+	genFile.Write([]byte("        else\n"))
+	genFile.Write([]byte("           $GOBIN test -run \"$testname\" > \"$outfile\" 2>&1\n"))
+	genFile.Write([]byte("           exit_code=$?\n"))
+	genFile.Write([]byte("        fi\n"))
+	genFile.Write([]byte(""))
+	genFile.Write([]byte("        if [ $exit_code == 0 ]; then\n"))
+	genFile.Write([]byte("                echo \"${testname} success ${index}\" | tee -a $SCRIPT_DIR/outfiles/log\n"))
+	genFile.Write([]byte("                rm \"$outfile\"\n"))
+	genFile.Write([]byte("        else\n"))
+	genFile.Write([]byte("                echo \"${testname} FAIL ${index}!\" | tee -a $SCRIPT_DIR/outfiles/log\n"))
+	genFile.Write([]byte("                export JENKINS_FAIL=1\n"))
+	genFile.Write([]byte("        fi\n"))
+	genFile.Write([]byte("}\n"))
+	genFile.Write([]byte("\n"))
+	genFile.Write([]byte("run_test() {\n"))
+	genFile.Write([]byte("        testname=\"$1\"\n"))
+	genFile.Write([]byte("        quantity=\"$2\"\n"))
+	genFile.Write([]byte("        let n=0 # \n"))
+	genFile.Write([]byte("        #echo \"running $testname $quantity times\"\n"))
+	genFile.Write([]byte("        while [ $n -lt ${quantity} ]; do\n"))
+	genFile.Write([]byte("                let n++\n"))
+	genFile.Write([]byte("                time iter $testname $n\n"))
+	genFile.Write([]byte("        done\n"))
+	genFile.Write([]byte("}\n"))
+	genFile.Write([]byte("\n"))
+	//@dedup when too painful to update to with new difficulties
+	genFile.Write([]byte("cd $SCRIPT_DIR/../memoryFS\n"))
+	genFile.Write([]byte("echo Begin Core MemoryFS Tests\n"))
 	for testName, _ := range params.testNamesToMethodBodies {
 		genFile.Write([]byte(fmt.Sprintf(" run_test \"Test%s_%s\" 1\n", "MemoryFS", testName)))
-   }
-   genFile.Write([]byte("cd $SCRIPT_DIR/../fsraft\n"))
-   genFile.Write([]byte("echo Begin Raft Difficulty 1 Tests - Clerk_OneClerkThreeServersNoErrors Tests\n"))
+	}
+	genFile.Write([]byte("cd $SCRIPT_DIR/../fsraft\n"))
+	genFile.Write([]byte("echo Begin Raft Difficulty 1 Tests - Clerk_OneClerkThreeServersNoErrors Tests\n"))
 	for testName, _ := range params.testNamesToMethodBodies {
 		genFile.Write([]byte(fmt.Sprintf(" run_test \"Test%s_%s\" 1\n", "Clerk_OneClerkThreeServersNoErrors", testName)))
-   }
-   genFile.Write([]byte("echo Begin Raft Difficulty 2 Tests - Clerk_OneClerkFiveServersUnreliableNet Tests\n"))
+	}
+	genFile.Write([]byte("echo Begin Raft Difficulty 2 Tests - Clerk_OneClerkFiveServersUnreliableNet Tests\n"))
 	for testName, _ := range params.testNamesToMethodBodies {
 		genFile.Write([]byte(fmt.Sprintf(" run_test \"Test%s_%s\" 1\n", "Clerk_OneClerkFiveServersUnreliableNet", testName)))
-   }
-   
-   for testName, _ := range params.testNamesToMethodBodies {
+	}
+
+	for testName, _ := range params.testNamesToMethodBodies {
 		genFile.Write([]byte(fmt.Sprintf(" run_test \"Test%s_%s\" 1\n", "OneClerkThreeServersSnapshots", testName)))
-   }
-   genFile.Write([]byte("if [ ! -z $JENKINS ]; then\n"))
-   genFile.Write([]byte("  exit $JENKINS_FAIL\n")) //surface any fails to jenkins
-   genFile.Write([]byte("fi\n"))
-   // if we get past here for more difficulties, great! 
+	}
+	genFile.Write([]byte("if [ ! -z $JENKINS ]; then\n"))
+	genFile.Write([]byte("  exit $JENKINS_FAIL\n")) //surface any fails to jenkins
+	genFile.Write([]byte("fi\n"))
+	// if we get past here for more difficulties, great!
 
 	fmt.Printf("Generated full precheckin script at %v\n", filePath)
 }

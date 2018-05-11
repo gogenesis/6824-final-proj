@@ -3,6 +3,7 @@ package memoryFS
 import (
 	"ad"
 	"filesystem"
+	"sync"
 )
 
 // A file (not a directory) in a filesystem.
@@ -15,7 +16,8 @@ type File struct {
 	isOpen   bool
 	openMode filesystem.OpenMode
 	contents []byte
-	offset   int // Invariant: offset >= 0
+	offset   int        // Invariant: offset >= 0
+	lock     sync.Mutex // Invariant: the lock is held whenever isOpen is true.
 }
 
 // Construct a file by calling createFile(fileName string) in the desired parent directory.
@@ -27,10 +29,13 @@ func (file *File) Name() string {
 
 // See FileSystem::Open.
 func (file *File) Open(mode filesystem.OpenMode, flags filesystem.OpenFlags) (err error) {
-	if file.isOpen {
+	if file.isOpen && !filesystem.FlagIsSet(flags, filesystem.Block) {
 		return filesystem.AlreadyOpen
 	}
+	ad.Debug(ad.TRACE, "Waiting for lock on %s.", file.Name())
+	file.lock.Lock()
 	file.isOpen = true
+	ad.Debug(ad.TRACE, "Got lock on file %s", file.Name())
 	file.openMode = mode
 	if filesystem.FlagIsSet(flags, filesystem.Truncate) {
 		file.contents = make([]byte, 0)
@@ -47,6 +52,7 @@ func (file *File) Close() (success bool, err error) {
 	ad.AssertExplain(file.isOpen, "Attempted to close a closed file! "+
 		"This should never happen because you need a fd to close a file.")
 	file.isOpen = false
+	file.lock.Unlock()
 	return true, nil
 }
 

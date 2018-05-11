@@ -48,11 +48,26 @@ func (ck *Clerk) Open(path string, mode filesystem.OpenMode, flags filesystem.Op
 	ab := AbstractOperation{OpType: OpenOp}
 	ab.Path = path
 	ab.OpenMode = mode
-	ab.OpenFlags = flags
-
-	returnVal := ck.Operation(ab)
-
-	return castOpenReply(returnVal)
+	if !filesystem.FlagIsSet(flags, filesystem.Block) {
+		// Do the operation as normal
+		ab.OpenFlags = flags
+		returnVal := ck.Operation(ab)
+		return castOpenReply(returnVal)
+	} else {
+		ad.DebugObj(ck, ad.RPC, "Received Blocking open for %v, "+
+			"removing the block flag and trying until it succeeds.", path)
+		flagsWithoutBlock := flags ^ filesystem.Block
+		ad.Assert(!filesystem.FlagIsSet(flagsWithoutBlock, filesystem.Block))
+		for {
+			fileDescriptor, err = ck.Open(path, mode, flagsWithoutBlock)
+			ad.DebugObj(ck, ad.RPC, "Trying Open(%v) again.", path)
+			if err != filesystem.AlreadyOpen {
+				return
+			}
+			time.Sleep(100 * time.Millisecond)
+			// and try again
+		}
+	}
 }
 
 // See the spec for FileSystem::Close.

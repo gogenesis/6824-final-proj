@@ -21,6 +21,8 @@ type FileSystem interface {
 	// If the file does not exist and the Create flag is included, creates it and then opens it.
 	// If the file does not exist and the Create flag is not included, returns NotFound error.
 	// If the Truncate flag is set, truncates the file size to 0 (if opening succeeds).
+	// If the file is already open, if the Block flag is included, blocks until it is closed; if the
+	// Block flag is not included, returns AlreadyOpen.
 	// A newly created file has its offset set to 0.
 	// Possible errors are IsDirectory, TooManyFDsOpen, NotFound, AlreadyOpen, and TryAgain.
 	// fileDescriptor == -1 if and only iff err is non-nil.
@@ -116,6 +118,7 @@ const (
 	Append OpenFlags = 1 << iota
 	Create
 	Truncate
+	Block
 )
 
 // Check whether a specific flag is set.
@@ -134,6 +137,9 @@ func (o OpenFlags) String() string {
 	}
 	if FlagIsSet(o, Truncate) {
 		setFlags = append(setFlags, "Truncate")
+	}
+	if FlagIsSet(o, Block) {
+		setFlags = append(setFlags, "Block")
 	}
 	return strings.Join(setFlags, "|")
 }
