@@ -142,10 +142,10 @@ func genPrecheckinScript(params genFileParameters) {
    genFile.Write([]byte("        #echo \"running ${testname}.${index}\"\n"))
    genFile.Write([]byte(""))
    genFile.Write([]byte("        if [ -z $JENKINS ]; then\n"))
-   genFile.Write([]byte("           go test -run \"$testname\" > \"$outfile\" 2>&1\n"))
+   genFile.Write([]byte("           go test -timeout 300s -run \"$testname\" > \"$outfile\" 2>&1\n"))
    genFile.Write([]byte("           exit_code=$?\n"))
    genFile.Write([]byte("        else\n"))
-   genFile.Write([]byte("           $GOBIN test -run \"$testname\" > \"$outfile\" 2>&1\n"))
+   genFile.Write([]byte("           $GOBIN test -timeout 300s -run \"$testname\" > \"$outfile\" 2>&1\n"))
    genFile.Write([]byte("           exit_code=$?\n"))
    genFile.Write([]byte("        fi\n"))
    genFile.Write([]byte(""))
@@ -165,7 +165,7 @@ func genPrecheckinScript(params genFileParameters) {
    genFile.Write([]byte("        #echo \"running $testname $quantity times\"\n"))
    genFile.Write([]byte("        while [ $n -lt ${quantity} ]; do\n"))
    genFile.Write([]byte("                let n++\n"))
-   genFile.Write([]byte("                iter $testname $n\n"))
+   genFile.Write([]byte("                time iter $testname $n\n"))
    genFile.Write([]byte("        done\n"))
    genFile.Write([]byte("}\n"))
    genFile.Write([]byte("\n"))
@@ -173,16 +173,20 @@ func genPrecheckinScript(params genFileParameters) {
    genFile.Write([]byte("cd $SCRIPT_DIR/../memoryFS\n"))
    genFile.Write([]byte("echo Begin Core MemoryFS Tests\n"))
 	for testName, _ := range params.testNamesToMethodBodies {
-		genFile.Write([]byte(fmt.Sprintf("time run_test \"Test%s_%s\" 1\n", "MemoryFS", testName)))
+		genFile.Write([]byte(fmt.Sprintf(" run_test \"Test%s_%s\" 1\n", "MemoryFS", testName)))
    }
    genFile.Write([]byte("cd $SCRIPT_DIR/../fsraft\n"))
    genFile.Write([]byte("echo Begin Raft Difficulty 1 Tests - Clerk_OneClerkThreeServersNoErrors Tests\n"))
 	for testName, _ := range params.testNamesToMethodBodies {
-		genFile.Write([]byte(fmt.Sprintf("time run_test \"Test%s_%s\" 1\n", "Clerk_OneClerkThreeServersNoErrors", testName)))
+		genFile.Write([]byte(fmt.Sprintf(" run_test \"Test%s_%s\" 1\n", "Clerk_OneClerkThreeServersNoErrors", testName)))
    }
    genFile.Write([]byte("echo Begin Raft Difficulty 2 Tests - Clerk_OneClerkFiveServersUnreliableNet Tests\n"))
 	for testName, _ := range params.testNamesToMethodBodies {
-		genFile.Write([]byte(fmt.Sprintf("time run_test \"Test%s_%s\" 1\n", "Clerk_OneClerkFiveServersUnreliableNet", testName)))
+		genFile.Write([]byte(fmt.Sprintf(" run_test \"Test%s_%s\" 1\n", "Clerk_OneClerkFiveServersUnreliableNet", testName)))
+   }
+   
+   for testName, _ := range params.testNamesToMethodBodies {
+		genFile.Write([]byte(fmt.Sprintf(" run_test \"Test%s_%s\" 1\n", "OneClerkThreeServersSnapshots", testName)))
    }
    genFile.Write([]byte("if [ ! -z $JENKINS ]; then\n"))
    genFile.Write([]byte("  exit $JENKINS_FAIL\n")) //surface any fails to jenkins
