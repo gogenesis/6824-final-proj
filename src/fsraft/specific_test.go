@@ -299,7 +299,7 @@ func GenericTest(t *testing.T, nClerks int, unreliable bool, crash bool, partiti
 		for clerkNum := 0; clerkNum < nClerks; clerkNum++ {
 			log.Printf("read from clerks %d\n", clerkNum)
 			numWrites := <-clerkChannels[clerkNum]
-			key := strconv.Itoa(clerkNum)
+			key := getFileName(clerkNum)
 			log.Printf("Check %v writes from clerk %d\n", numWrites, clerkNum)
 			// Make sure that the contents of that clerk's file are correct
 			fileContents := Get(t, clerkConnectedToAll, key)
