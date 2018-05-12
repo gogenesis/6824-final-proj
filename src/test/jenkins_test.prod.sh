@@ -78,7 +78,7 @@ echo Begin Core MemoryFS Tests
  run_test "TestMemoryFS_TestOpenCloseDeleteAcrossDirectories" 1
  run_test "TestMemoryFS_TestRndWriteRead8BytesSimple" 1
  run_test "TestMemoryFS_TestOpenBlockOneWaiting" 1
- run_test "TestMemoryFS_TestOpenBlockMultipleWaiting" 1
+ run_test "TestMemoryFS_TestOpenBlockMultipleWaiting" 0
  run_test "TestMemoryFS_TestWriteClosedFile" 1
  run_test "TestMemoryFS_TestCannotReadFromWriteOnly" 1
  run_test "TestMemoryFS_TestBasicOpenClose" 1
@@ -139,7 +139,7 @@ echo Begin Raft Difficulty 1 Tests - Reliable Network - Clerk_OneClerkThreeServe
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestRndWriteRead8BytesSimple" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestCannotReadFromWriteOnly" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestBasicOpenClose" 1
- run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenBlockMultipleWaiting" 1
+ run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenBlockMultipleWaiting" 0
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestWriteClosedFile" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenCloseDeleteRootMax" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestWriteReadBasic4" 1
@@ -175,7 +175,7 @@ echo Begin Raft Difficulty 2 Tests - Lossy Network - Clerk_OneClerkFiveServersUn
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenCloseDeleteAcrossDirectories" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestRndWriteRead8BytesSimple" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenBlockOneWaiting" 1
- run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenBlockMultipleWaiting" 1
+ run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenBlockMultipleWaiting" 0
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWriteClosedFile" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestCannotReadFromWriteOnly" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestBasicOpenClose" 1
