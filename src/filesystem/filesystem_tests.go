@@ -470,7 +470,7 @@ func TestOpenCloseDeleteRootMax(t *testing.T, fs FileSystem) {
 
 // How long to wait for things to happen before deciding
 // that something was going to take forever.
-const WaitTime = time.Second
+const WaitTime = 3 * time.Second
 
 func TestOpenBlockNoContention(t *testing.T, fs FileSystem) {
 	// Make sure that if no one has a file open, an Open with the Block flag
@@ -707,27 +707,27 @@ func TestWrite1MBytes(t *testing.T, fs FileSystem) {
 }
 
 func TestWrite10MBytes64Kx160(t *testing.T, fs FileSystem) {
-	TestWriteNBytesIter(t, fs, "/wr-10m-64Kx160.txt", 64 * 1000, 160)
+	TestWriteNBytesIter(t, fs, "/wr-10m-64Kx160.txt", 64*1000, 160)
 }
 
 func TestWrite10MBytes128Kx80(t *testing.T, fs FileSystem) {
-	TestWriteNBytesIter(t, fs, "/wr-10m-128Kx80.txt", 128 * 1000, 80)
+	TestWriteNBytesIter(t, fs, "/wr-10m-128Kx80.txt", 128*1000, 80)
 }
 
 func TestWrite10MBytes256Kx40(t *testing.T, fs FileSystem) {
-	TestWriteNBytesIter(t, fs, "/wr-10m-256Kx40.txt", 256 * 1000, 40)
+	TestWriteNBytesIter(t, fs, "/wr-10m-256Kx40.txt", 256*1000, 40)
 }
 
 func TestWrite10MBytes512Kx20(t *testing.T, fs FileSystem) {
-	TestWriteNBytesIter(t, fs, "/wr-10m-512Kx20.txt", 512 * 1000, 20)
+	TestWriteNBytesIter(t, fs, "/wr-10m-512Kx20.txt", 512*1000, 20)
 }
 
 func TestWrite10MBytes1Mx10(t *testing.T, fs FileSystem) {
-	TestWriteNBytesIter(t, fs, "/wr-10m-1Mx10.txt", 1000 * 1000, 10)
+	TestWriteNBytesIter(t, fs, "/wr-10m-1Mx10.txt", 1000*1000, 10)
 }
 
 func TestWrite10MBytes10Mx1(t *testing.T, fs FileSystem) {
-	TestWriteNBytesIter(t, fs, "/wr-10m-10Mx1.txt", 10 * 1000 * 1000, 1)
+	TestWriteNBytesIter(t, fs, "/wr-10m-10Mx1.txt", 10*1000*1000, 1)
 }
 
 // ===== BEGIN ITERATIVE WRITE & READ CHUNK TESTS EXPANDING FILES =====

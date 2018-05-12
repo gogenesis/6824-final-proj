@@ -76,7 +76,7 @@ echo Begin Core MemoryFS Tests
  run_test "TestMemoryFS_TestRndWriteRead6400BytesIter64K" 1
  run_test "TestMemoryFS_TestOpenRWClose" 1
  run_test "TestMemoryFS_TestOpenCloseDeleteMaxFD" 1
- run_test "TestMemoryFS_TestOpenBlockMultipleWaiting" 1
+ run_test "TestMemoryFS_TestOpenBlockMultipleWaiting" 0
  run_test "TestMemoryFS_TestOpenRWClose64" 1
  run_test "TestMemoryFS_TestOpenTruncate" 1
  run_test "TestMemoryFS_TestSeekErrorBadOffsetOperation" 1
@@ -115,7 +115,7 @@ echo Begin Raft Difficulty 1 Tests - Reliable Network - Clerk_OneClerkThreeServe
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestRndWriteRead6400BytesIter64K" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenNotFound" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestWrite8Bytes" 1
- run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenBlockMultipleWaiting" 1
+ run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenBlockMultipleWaiting" 0
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenRWClose" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenCloseDeleteMaxFD" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestSeekErrorBadOffsetOperation" 1
@@ -219,7 +219,7 @@ echo Begin Raft Difficulty 2 Tests - Lossy Network - Clerk_OneClerkFiveServersUn
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestRndWriteRead6400BytesIter64K" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenRWClose" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenCloseDeleteMaxFD" 1
- run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenBlockMultipleWaiting" 1
+ run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenBlockMultipleWaiting" 0
  echo "Begin Singleton Tests"
  run_test "TestOneClerkFiveServersPartition" 1
  run_test "TestKVBasic" 1
