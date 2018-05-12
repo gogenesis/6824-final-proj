@@ -56,7 +56,7 @@ echo Begin Core MemoryFS Tests
  run_test "TestMemoryFS_TestOpenOffsetEqualsZero" 1
  run_test "TestMemoryFS_TestSeekErrorBadFD" 1
  run_test "TestMemoryFS_TestCannotReadFromWriteOnly" 1
- run_test "TestMemoryFS_TestWrite10MBytes512Kx20" 1
+ run_test "TestMemoryFS_TestWrite10MBytes512Kx20" 0
  run_test "TestMemoryFS_TestWrite1Byte" 1
  run_test "TestMemoryFS_TestWrite10MBytes128Kx80" 0
  run_test "TestMemoryFS_TestMkdirTree" 1
@@ -65,7 +65,7 @@ echo Begin Core MemoryFS Tests
  run_test "TestMemoryFS_TestDeleteNotFound" 1
  run_test "TestMemoryFS_TestOpenAlreadyExists" 1
  run_test "TestMemoryFS_TestOpenCloseLeastFD" 1
- run_test "TestMemoryFS_TestWrite10MBytes256Kx40" 1
+ run_test "TestMemoryFS_TestWrite10MBytes256Kx40" 0
  run_test "TestMemoryFS_TestRndWriteRead8BytesIter64" 1
  run_test "TestMemoryFS_TestWriteSomeButNotAll" 1
  run_test "TestMemoryFS_TestOpenBlockNoContention" 0
@@ -83,7 +83,7 @@ echo Begin Core MemoryFS Tests
  run_test "TestMemoryFS_TestCloseClosed" 1
  run_test "TestMemoryFS_TestOpenROClose" 1
  run_test "TestMemoryFS_TestWrite10MBytes64Kx160" 0
- run_test "TestMemoryFS_TestWrite10MBytes1Mx10" 1
+ run_test "TestMemoryFS_TestWrite10MBytes1Mx10" 0
  run_test "TestMemoryFS_TestOpenCloseDeleteAcrossDirectories" 1
  run_test "TestMemoryFS_TestOpenROClose4" 1
  run_test "TestMemoryFS_TestOpenBlockOnlyOne" 0
@@ -100,7 +100,7 @@ echo Begin Core MemoryFS Tests
  run_test "TestMemoryFS_TestWriteReadBasic" 1
  run_test "TestMemoryFS_TestWrite1MBytes" 1
  run_test "TestMemoryFS_TestOpenCloseDeleteRoot" 1
- run_test "TestMemoryFS_TestWrite10MBytes10Mx1" 1
+ run_test "TestMemoryFS_TestWrite10MBytes10Mx1" 0
 cd $SCRIPT_DIR/../fsraft
 echo Begin Raft Difficulty 1 Tests - Reliable Network - Clerk_OneClerkThreeServersNoErrors Tests
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenCloseLeastFD" 1
@@ -169,7 +169,7 @@ echo Begin Raft Difficulty 2 Tests - Lossy Network - Clerk_OneClerkFiveServersUn
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestCloseClosed" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenROClose" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite10MBytes64Kx160" 0
- run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite10MBytes1Mx10" 1
+ run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite10MBytes1Mx10" 0
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenROClose4" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenBlockOnlyOne" 0
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestRndWriteRead512KBIter1MB" 1
@@ -185,7 +185,7 @@ echo Begin Raft Difficulty 2 Tests - Lossy Network - Clerk_OneClerkFiveServersUn
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenBlockOneWaiting" 0
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWriteReadBasic" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenCloseDeleteRoot" 1
- run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite10MBytes10Mx1" 1
+ run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite10MBytes10Mx1" 0
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestCannotWriteToReadOnly" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite1KBytes" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestReadClosedFile" 1
@@ -202,7 +202,7 @@ echo Begin Raft Difficulty 2 Tests - Lossy Network - Clerk_OneClerkFiveServersUn
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestCannotReadFromWriteOnly" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestDeleteCannotDeleteRootDir" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite1Byte" 1
- run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite10MBytes128Kx80" 1
+ run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite10MBytes128Kx80" 0
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestMkdirTree" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestRndWriteReadVerfiyHoleExpansion" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestRndWriteRead8BytesIter64" 1
