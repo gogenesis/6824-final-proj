@@ -10,14 +10,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-   "linearizability"
-   "bytes"
-   "strconv"
-   "time"
-   "math/rand"
-   "sync"
-   "sync/atomic"
-   "fmt"
+   //"linearizability"
+   //"sync"
 )
 
 const electionTimeout = 1 * time.Second
@@ -496,6 +490,7 @@ func spawn_clients_and_wait(t *testing.T, cfg *config, ncli int, fn func(me int,
 
 // similar to GenericTest, but with clients doing random operations (and using a
 // linearizability checker)
+/*
 func GenericTestLinearizability(t *testing.T, part string, nclients int, nservers int, unreliable bool, crash bool, partitions bool, maxraftstate int) {
 	title := "Test: "
 	if unreliable {
@@ -547,7 +542,7 @@ func GenericTestLinearizability(t *testing.T, part string, nclients int, nserver
 			}()
 			for atomic.LoadInt32(&done_clients) == 0 {
 				key := fmt.Sprintf("/lin-rnd-%d.txt", strconv.Itoa(rand.Int() % nclients))
-				nv := []bytes("x " + strconv.Itoa(cli) + " " + strconv.Itoa(j) + " y")
+				nv := []byte("x " + strconv.Itoa(cli) + " " + strconv.Itoa(j) + " y")
 				var inp linearizability.KvInput  //Write
 				var out linearizability.KvOutput //Read
 				start := int64(time.Since(begin))
@@ -656,4 +651,4 @@ func GenericTestLinearizability(t *testing.T, part string, nclients int, nserver
 func DISABLED_PersistPartitionUnreliableLinearizable3A(t *testing.T) {
    // Test: unreliable net, restarts, partitions, linearizability checks (3A) ...
    GenericTestLinearizability(t, "3A", 15, 7, true, true, true, -1)
-}
+}*/
