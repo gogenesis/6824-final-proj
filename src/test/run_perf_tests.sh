@@ -8,6 +8,8 @@ if [ -z $JENKINS ]; then
 fi
 touch $SCRIPT_DIR/outfiles/log
 
+export DFS_DISABLE_ASSERTIONS="true"
+export DFS_DEFAULT_DEBUG_LEVEL=0
 iter() {
         testname="$1" 
         index="$2"
@@ -220,65 +222,6 @@ echo Begin Raft Difficulty 2 Tests - Lossy Network - Clerk_OneClerkFiveServersUn
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenRWClose" 0
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite10MBytes128Kx80" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenCloseDeleteAcrossDirectories" 0
-echo Begin Raft Difficulty 3 Tests - Snapshots - Clerk_OneClerkFiveServersUnreliableNet Tests
- run_test "TestOneClerkThreeServersSnapshots_TestOpenBlockOneWaiting" 0
- run_test "TestOneClerkThreeServersSnapshots_TestWrite1KBytes" 0
- run_test "TestOneClerkThreeServersSnapshots_TestMkdirAlreadyExists" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenROClose" 0
- run_test "TestOneClerkThreeServersSnapshots_TestCannotWriteToReadOnly" 0
- run_test "TestOneClerkThreeServersSnapshots_TestWrite10MBytes1Mx10" 1
- run_test "TestOneClerkThreeServersSnapshots_TestMkdir" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenAlreadyExists" 0
- run_test "TestOneClerkThreeServersSnapshots_TestRndWriteRead64BytesSimple" 0
- run_test "TestOneClerkThreeServersSnapshots_TestMkdirTree" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenOpened" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenRWClose64" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenOffsetEqualsZero" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenCloseDeleteRoot" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenBlockNoContention" 0
- run_test "TestOneClerkThreeServersSnapshots_TestWriteClosedFile" 0
- run_test "TestOneClerkThreeServersSnapshots_TestWrite1MBytes" 0
- run_test "TestOneClerkThreeServersSnapshots_TestBasicOpenClose" 0
- run_test "TestOneClerkThreeServersSnapshots_TestDeleteNotFound" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenTruncate" 0
- run_test "TestOneClerkThreeServersSnapshots_TestWriteSomeButNotAll" 0
- run_test "TestOneClerkThreeServersSnapshots_TestRndWriteReadVerfiyHoleExpansion" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenCloseLeastFD" 0
- run_test "TestOneClerkThreeServersSnapshots_TestWrite1Byte" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenRWClose4" 0
- run_test "TestOneClerkThreeServersSnapshots_TestWrite8Bytes" 0
- run_test "TestOneClerkThreeServersSnapshots_TestDeleteCannotDeleteRootDir" 0
- run_test "TestOneClerkThreeServersSnapshots_TestSeekErrorBadFD" 0
- run_test "TestOneClerkThreeServersSnapshots_TestSeekOffEOF" 0
- run_test "TestOneClerkThreeServersSnapshots_TestWriteReadBasic" 0
- run_test "TestOneClerkThreeServersSnapshots_TestWrite10MBytes512Kx20" 1
- run_test "TestOneClerkThreeServersSnapshots_TestRndWriteRead8BytesIter64" 0
- run_test "TestOneClerkThreeServersSnapshots_TestRndWriteRead6400BytesIter64K" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenRWClose" 0
- run_test "TestOneClerkThreeServersSnapshots_TestWrite10MBytes128Kx80" 1
- run_test "TestOneClerkThreeServersSnapshots_TestOpenCloseDeleteAcrossDirectories" 0
- run_test "TestOneClerkThreeServersSnapshots_TestWrite10MBytes10Mx1" 1
- run_test "TestOneClerkThreeServersSnapshots_TestMkdirNotFound" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenROClose4" 0
- run_test "TestOneClerkThreeServersSnapshots_TestRndWriteRead1ByteSimple" 0
- run_test "TestOneClerkThreeServersSnapshots_TestRndWriteRead8BytesSimple" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenNotFound" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenAppend" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenBlockOnlyOne" 0
- run_test "TestOneClerkThreeServersSnapshots_TestWriteReadBasic4" 0
- run_test "TestOneClerkThreeServersSnapshots_TestWrite10MBytes64Kx160" 1
- run_test "TestOneClerkThreeServersSnapshots_TestRndWriteRead512KBIter1MB" 0
- run_test "TestOneClerkThreeServersSnapshots_TestRndWriteRead128KBIter10MB" 1
- run_test "TestOneClerkThreeServersSnapshots_TestOpenROClose64" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenCloseDeleteMaxFD" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenBlockMultipleWaiting" 0
- run_test "TestOneClerkThreeServersSnapshots_TestCannotReadFromWriteOnly" 0
- run_test "TestOneClerkThreeServersSnapshots_TestCloseClosed" 0
- run_test "TestOneClerkThreeServersSnapshots_TestOpenCloseDeleteRootMax" 0
- run_test "TestOneClerkThreeServersSnapshots_TestSeekErrorBadOffsetOperation" 0
- run_test "TestOneClerkThreeServersSnapshots_TestWrite10MBytes256Kx40" 1
- run_test "TestOneClerkThreeServersSnapshots_TestReadClosedFile" 0
- run_test "TestOneClerkThreeServersSnapshots_TestRndWriteRead8BytesIter8" 0
  echo "Begin Singleton Tests"
  run_test "TestOneClerkFiveServersPartition" 0
  run_test "TestKVBasic" 0

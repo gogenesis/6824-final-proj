@@ -58,7 +58,7 @@ echo Begin Core MemoryFS Tests
  run_test "TestMemoryFS_TestCannotReadFromWriteOnly" 1
  run_test "TestMemoryFS_TestWrite10MBytes512Kx20" 1
  run_test "TestMemoryFS_TestWrite1Byte" 1
- run_test "TestMemoryFS_TestWrite10MBytes128Kx80" 1
+ run_test "TestMemoryFS_TestWrite10MBytes128Kx80" 0
  run_test "TestMemoryFS_TestMkdirTree" 1
  run_test "TestMemoryFS_TestRndWriteReadVerfiyHoleExpansion" 1
  run_test "TestMemoryFS_TestDeleteCannotDeleteRootDir" 1
@@ -82,13 +82,13 @@ echo Begin Core MemoryFS Tests
  run_test "TestMemoryFS_TestSeekErrorBadOffsetOperation" 1
  run_test "TestMemoryFS_TestCloseClosed" 1
  run_test "TestMemoryFS_TestOpenROClose" 1
- run_test "TestMemoryFS_TestWrite10MBytes64Kx160" 1
+ run_test "TestMemoryFS_TestWrite10MBytes64Kx160" 0
  run_test "TestMemoryFS_TestWrite10MBytes1Mx10" 1
  run_test "TestMemoryFS_TestOpenCloseDeleteAcrossDirectories" 1
  run_test "TestMemoryFS_TestOpenROClose4" 1
  run_test "TestMemoryFS_TestOpenBlockOnlyOne" 1
  run_test "TestMemoryFS_TestRndWriteRead512KBIter1MB" 1
- run_test "TestMemoryFS_TestRndWriteRead128KBIter10MB" 1
+ run_test "TestMemoryFS_TestRndWriteRead128KBIter10MB" 0
  run_test "TestMemoryFS_TestOpenCloseDeleteRootMax" 1
  run_test "TestMemoryFS_TestWriteClosedFile" 1
  run_test "TestMemoryFS_TestMkdirNotFound" 1
@@ -104,7 +104,7 @@ echo Begin Core MemoryFS Tests
 cd $SCRIPT_DIR/../fsraft
 echo Begin Raft Difficulty 1 Tests - Reliable Network - Clerk_OneClerkThreeServersNoErrors Tests
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenCloseLeastFD" 1
- run_test "TestClerk_OneClerkThreeServersNoErrors_TestWrite10MBytes256Kx40" 1
+ run_test "TestClerk_OneClerkThreeServersNoErrors_TestWrite10MBytes256Kx40" 0
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestRndWriteRead8BytesIter64" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestDeleteNotFound" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenAlreadyExists" 1
@@ -121,13 +121,13 @@ echo Begin Raft Difficulty 1 Tests - Reliable Network - Clerk_OneClerkThreeServe
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestSeekErrorBadOffsetOperation" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenRWClose64" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenTruncate" 1
- run_test "TestClerk_OneClerkThreeServersNoErrors_TestWrite10MBytes64Kx160" 1
- run_test "TestClerk_OneClerkThreeServersNoErrors_TestWrite10MBytes1Mx10" 1
+ run_test "TestClerk_OneClerkThreeServersNoErrors_TestWrite10MBytes64Kx160" 0
+ run_test "TestClerk_OneClerkThreeServersNoErrors_TestWrite10MBytes1Mx10" 0
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenCloseDeleteAcrossDirectories" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestCloseClosed" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenROClose" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestRndWriteRead512KBIter1MB" 1
- run_test "TestClerk_OneClerkThreeServersNoErrors_TestRndWriteRead128KBIter10MB" 1
+ run_test "TestClerk_OneClerkThreeServersNoErrors_TestRndWriteRead128KBIter10MB" 0
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenROClose4" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenBlockOnlyOne" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestMkdirNotFound" 1
@@ -141,7 +141,7 @@ echo Begin Raft Difficulty 1 Tests - Reliable Network - Clerk_OneClerkThreeServe
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenRWClose4" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenAppend" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenCloseDeleteRoot" 1
- run_test "TestClerk_OneClerkThreeServersNoErrors_TestWrite10MBytes10Mx1" 1
+ run_test "TestClerk_OneClerkThreeServersNoErrors_TestWrite10MBytes10Mx1" 0
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestSeekOffEOF" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestWriteReadBasic4" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestCannotWriteToReadOnly" 1
@@ -153,14 +153,14 @@ echo Begin Raft Difficulty 1 Tests - Reliable Network - Clerk_OneClerkThreeServe
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestRndWriteRead8BytesSimple" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestSeekErrorBadFD" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestCannotReadFromWriteOnly" 1
- run_test "TestClerk_OneClerkThreeServersNoErrors_TestWrite10MBytes512Kx20" 1
+ run_test "TestClerk_OneClerkThreeServersNoErrors_TestWrite10MBytes512Kx20" 0
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenROClose64" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestOpenOffsetEqualsZero" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestMkdirTree" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestRndWriteReadVerfiyHoleExpansion" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestDeleteCannotDeleteRootDir" 1
  run_test "TestClerk_OneClerkThreeServersNoErrors_TestWrite1Byte" 1
- run_test "TestClerk_OneClerkThreeServersNoErrors_TestWrite10MBytes128Kx80" 1
+ run_test "TestClerk_OneClerkThreeServersNoErrors_TestWrite10MBytes128Kx80" 0
 echo Begin Raft Difficulty 2 Tests - Lossy Network - Clerk_OneClerkFiveServersUnreliableNet Tests
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenRWClose64" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenTruncate" 1
@@ -168,12 +168,12 @@ echo Begin Raft Difficulty 2 Tests - Lossy Network - Clerk_OneClerkFiveServersUn
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenCloseDeleteAcrossDirectories" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestCloseClosed" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenROClose" 1
- run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite10MBytes64Kx160" 1
+ run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite10MBytes64Kx160" 0
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite10MBytes1Mx10" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenROClose4" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenBlockOnlyOne" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestRndWriteRead512KBIter1MB" 1
- run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestRndWriteRead128KBIter10MB" 1
+ run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestRndWriteRead128KBIter10MB" 0
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenCloseDeleteRootMax" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWriteClosedFile" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestMkdirNotFound" 1
@@ -195,7 +195,7 @@ echo Begin Raft Difficulty 2 Tests - Lossy Network - Clerk_OneClerkFiveServersUn
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestSeekOffEOF" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWriteReadBasic4" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestRndWriteRead8BytesSimple" 1
- run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite10MBytes512Kx20" 1
+ run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite10MBytes512Kx20" 0
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenROClose64" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenOffsetEqualsZero" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestSeekErrorBadFD" 1
@@ -209,7 +209,7 @@ echo Begin Raft Difficulty 2 Tests - Lossy Network - Clerk_OneClerkFiveServersUn
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestDeleteNotFound" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenAlreadyExists" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenCloseLeastFD" 1
- run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite10MBytes256Kx40" 1
+ run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWrite10MBytes256Kx40" 0
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestWriteSomeButNotAll" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestOpenBlockNoContention" 1
  run_test "TestClerk_OneClerkFiveServersUnreliableNet_TestRndWriteRead64BytesSimple" 1
