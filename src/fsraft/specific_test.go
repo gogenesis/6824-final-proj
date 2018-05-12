@@ -10,9 +10,18 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+   "linearizability"
+   "bytes"
+   "strconv"
+   "time"
+   "math/rand"
+   "sync"
+   "sync/atomic"
+   "fmt"
 )
 
 const electionTimeout = 1 * time.Second
+const linearizabilityCheckTimeout = 1 * time.Second
 
 // Specific tests ======================================================================================================
 func TestOneClerkFiveServersPartition(t *testing.T) {
@@ -454,4 +463,197 @@ func TestSnapshotUnreliableRecoverKV(t *testing.T) {
 
 func TestSnapshotUnreliableRecoverConcurrentPartitionKV(t *testing.T) {
 	GenericTest(t, 5, true, true, true, 1000)
+}
+
+// a client runs the function f and then signals it is done
+func run_client(t *testing.T, cfg *config, me int, ca chan bool, fn func(me int, ck *Clerk, t *testing.T)) {
+	ok := false
+	defer func() { ca <- ok }()
+	ck := cfg.makeClient(cfg.All())
+	fn(me, ck, t)
+	ok = true
+	cfg.deleteClient(ck)
+}
+
+
+
+// spawn ncli clients and wait until they are all done
+func spawn_clients_and_wait(t *testing.T, cfg *config, ncli int, fn func(me int, ck *Clerk, t *testing.T)) {
+	ca := make([]chan bool, ncli)
+	for cli := 0; cli < ncli; cli++ {
+		ca[cli] = make(chan bool)
+		go run_client(t, cfg, cli, ca[cli], fn)
+	}
+	// log.Printf("spawn_clients_and_wait: waiting for clients")
+	for cli := 0; cli < ncli; cli++ {
+		ok := <-ca[cli]
+		// log.Printf("spawn_clients_and_wait: client %d is done\n", cli)
+		if ok == false {
+			t.Fatalf("failure")
+		}
+	}
+}
+
+// similar to GenericTest, but with clients doing random operations (and using a
+// linearizability checker)
+func GenericTestLinearizability(t *testing.T, part string, nclients int, nservers int, unreliable bool, crash bool, partitions bool, maxraftstate int) {
+	title := "Test: "
+	if unreliable {
+		// the network drops RPC requests and replies.
+		title = title + "unreliable net, "
+	}
+	if crash {
+		// peers re-start, and thus persistence must work.
+		title = title + "restarts, "
+	}
+	if partitions {
+		// the network may partition
+		title = title + "partitions, "
+	}
+	if maxraftstate != -1 {
+		title = title + "snapshots, "
+	}
+	if nclients > 1 {
+		title = title + "many clients"
+	} else {
+		title = title + "one client"
+	}
+	title = title + ", linearizability checks (" + part + ")" // 3A or 3B
+
+	cfg := make_config(t, nservers, unreliable, maxraftstate)
+	defer cfg.cleanup()
+
+	cfg.begin(title)
+
+	begin := time.Now()
+	var operations []linearizability.Operation
+	var opMu sync.Mutex
+
+	done_partitioner := int32(0)
+	done_clients := int32(0)
+	ch_partitioner := make(chan bool)
+	clnts := make([]chan int, nclients)
+	for i := 0; i < nclients; i++ {
+		clnts[i] = make(chan int)
+	}
+	for i := 0; i < 3; i++ {
+		// log.Printf("Iteration %v\n", i)
+		atomic.StoreInt32(&done_clients, 0)
+		atomic.StoreInt32(&done_partitioner, 0)
+		go spawn_clients_and_wait(t, cfg, nclients, func(cli int, myck *Clerk, t *testing.T) {
+			j := 0
+			defer func() {
+				clnts[cli] <- j
+			}()
+			for atomic.LoadInt32(&done_clients) == 0 {
+				key := fmt.Sprintf("/lin-rnd-%d.txt", strconv.Itoa(rand.Int() % nclients))
+				nv := []bytes("x " + strconv.Itoa(cli) + " " + strconv.Itoa(j) + " y")
+				var inp linearizability.KvInput  //Write
+				var out linearizability.KvOutput //Read
+				start := int64(time.Since(begin))
+				if (rand.Int() % 1000) < 500 {
+					//Equivalent to Append(cfg, myck, key, nv)
+               fd := myck.HelpOpen(t, myck, key)
+               HelpWrite(t, myck, fd, key, nv)
+               HelpClose(t, myck, fd)
+					//Equivalent to inp = linearizability.KvInput{Op: 2, Key: key, Value: nv}
+					inp = linearizability.MemFSInput{ Op: 2, Key: key, Value: nv }
+					j++
+				} else if (rand.Int() % 1000) < 100 {
+					//Equivalent to Put(cfg, myck, key, nv)
+               fd := myck.HelpOpen(t, myck, key)
+               HelpSeek(t, myck, fd, 0, FromBeginning)
+               HelpWrite(t, myck, key, nv)
+               HelpClose(t, myck, fd)
+					//Equivalent to inp = linearizability.KvInput{Op: 1, Key: key, Value: nv}
+					inp = linearizability.MemFSInput{Op: 1, Key: key, Value: nv}
+					j++
+				} else {
+					//Equivalent to v := Get(cfg, myck, key)
+               fd := myck.HelpOpen(t, myck, key)
+               HelpSeek(t, myck, fd, 0, FromBeginning)
+               v := HelpRead(t, myck, fd, len(nv))
+               HelpClose(t, myck, fd)
+
+					//Eqiv. to inp = linearizability.KvInput{Op: 0, Key: key}
+					inp = linearizability.MemFSInput{Op: 0, Key: key}
+					//Eqiv. to out = linearizability.KvOutput{Value: v}
+					out = linearizability.MemFSOutput{Value: v}
+				}
+				end := int64(time.Since(begin))
+				op := linearizability.Operation{Input: inp, Call: start, Output: out, Return: end}
+				opMu.Lock()
+				operations = append(operations, op)
+				opMu.Unlock()
+			}
+		})
+
+		if partitions {
+			// Allow the clients to perform some operations without interruption
+			time.Sleep(1 * time.Second)
+			go partitioner(t, cfg, ch_partitioner, &done_partitioner)
+		}
+		time.Sleep(5 * time.Second)
+
+		atomic.StoreInt32(&done_clients, 1)     // tell clients to quit
+		atomic.StoreInt32(&done_partitioner, 1) // tell partitioner to quit
+
+		if partitions {
+			// log.Printf("wait for partitioner\n")
+			<-ch_partitioner
+			// reconnect network and submit a request. A client may
+			// have submitted a request in a minority.  That request
+			// won't return until that server discovers a new term
+			// has started.
+			cfg.ConnectAll()
+			// wait for a while so that we have a new term
+			time.Sleep(electionTimeout)
+		}
+
+		if crash {
+			// log.Printf("shutdown servers\n")
+			for i := 0; i < nservers; i++ {
+				cfg.ShutdownServer(i)
+			}
+			// Wait for a while for servers to shutdown, since
+			// shutdown isn't a real crash and isn't instantaneous
+			time.Sleep(electionTimeout)
+			// log.Printf("restart servers\n")
+			// crash and re-start all
+			for i := 0; i < nservers; i++ {
+				cfg.StartServer(i)
+			}
+			cfg.ConnectAll()
+		}
+
+		// wait for clients.
+		for i := 0; i < nclients; i++ {
+			<-clnts[i]
+		}
+
+		if maxraftstate > 0 {
+			// Check maximum after the servers have processed all client
+			// requests and had time to checkpoint.
+			if cfg.LogSize() > 2*maxraftstate {
+				t.Fatalf("logs were not trimmed (%v > 2*%v)", cfg.LogSize(), maxraftstate)
+			}
+		}
+	}
+
+	cfg.end()
+
+	// log.Printf("Checking linearizability of %d operations", len(operations))
+	// start := time.Now()
+	//Equiv to ok :=  ... KvModel(), operations, linearizabilityCheckTimeout)
+	ok := linearizability.CheckOperationsTimeout(linearizability.MemFSModel(), operations, linearizabilityCheckTimeout)
+	// dur := time.Since(start)
+	// log.Printf("Linearizability check done in %s; result: %t", time.Since(start).String(), ok)
+	if !ok {
+		t.Fatal("history is not linearizable")
+	}
+}
+
+func DISABLED_PersistPartitionUnreliableLinearizable3A(t *testing.T) {
+   // Test: unreliable net, restarts, partitions, linearizability checks (3A) ...
+   GenericTestLinearizability(t, "3A", 15, 7, true, true, true, -1)
 }

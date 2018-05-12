@@ -3,6 +3,7 @@ package fsraft
 import (
 	fs "filesystem"
 	"testing"
+
 )
 
 // The combiner: takes a difficulty and a functionality test and runs that test on that difficulty.
@@ -36,12 +37,13 @@ func OneClerkThreeServersSnapshots(t *testing.T) fs.FileSystem {
 	return cfg.makeClient(cfg.All())
 }
 
+// shelved for persist testing
 func OneClerkFiveServersRandomPartitions(t *testing.T) fs.FileSystem {
 	// TODO return a wrapper class around a Clerk that delays ops and adds random partitions
 	panic("TODO")
 }
 
 func TwoClerksThreeServersNoErrors(t *testing.T) fs.FileSystem {
-	// TODO return a wrapper around a Clerk that (randomly?) distributes ops across two clerks
+// TODO return a wrapper around a Clerk that (randomly?) distributes ops across two clerks
 	panic("TODO")
 }
