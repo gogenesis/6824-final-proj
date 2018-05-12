@@ -181,10 +181,6 @@ func genPrecheckinScript(params genFileParameters) {
 	for testName, _ := range params.testNamesToMethodBodies {
 		genFile.Write([]byte(fmt.Sprintf(" run_test \"Test%s_%s\" 1\n", "Clerk_OneClerkFiveServersUnreliableNet", testName)))
 	}
-	genFile.Write([]byte("echo Begin Raft Difficulty 3 Tests - Snapshots - Clerk_OneClerkFiveServersUnreliableNet Tests\n"))
-	for testName, _ := range params.testNamesToMethodBodies {
-		genFile.Write([]byte(fmt.Sprintf(" run_test \"Test%s_%s\" 1\n", "OneClerkThreeServersSnapshots", testName)))
-	}
 
    // Singleton tests
 	genFile.Write([]byte(" echo \"Begin Singleton Tests\"\n"))

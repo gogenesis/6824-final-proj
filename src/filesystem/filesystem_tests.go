@@ -54,7 +54,14 @@ var FunctionalityTests = []func(t *testing.T, fs FileSystem){
 	TestWrite8Bytes,
 	TestWrite1KBytes,
 	TestWrite1MBytes,
-	TestWrite10MBytes,
+	TestWrite10MBytes64Kx160,
+	TestWrite10MBytes128Kx80,
+	TestWrite10MBytes256Kx40,
+	TestWrite10MBytes128Kx80,
+	TestWrite10MBytes256Kx40,
+	TestWrite10MBytes512Kx20,
+	TestWrite10MBytes1Mx10,
+	TestWrite10MBytes10Mx1,
 	TestReadClosedFile,
 	TestRndWriteRead1ByteSimple,
 	TestRndWriteRead8BytesSimple,
@@ -100,7 +107,14 @@ var testNames = []string{
 	"TestWrite8Bytes",
 	"TestWrite1KBytes",
 	"TestWrite1MBytes",
-	"TestWrite10MBytes",
+	"TestWrite10MBytes64Kx160",
+	"TestWrite10MBytes128Kx80",
+	"TestWrite10MBytes256Kx40",
+	"TestWrite10MBytes128Kx80",
+	"TestWrite10MBytes256Kx40",
+	"TestWrite10MBytes512Kx20",
+	"TestWrite10MBytes1Mx10",
+	"TestWrite10MBytes10Mx1",
 	"TestReadClosedFile",
 	"TestRndWriteRead1ByteSimple",
 	"TestRndWriteRead8BytesSimple",
@@ -692,8 +706,28 @@ func TestWrite1MBytes(t *testing.T, fs FileSystem) {
 	TestWriteNBytesIter(t, fs, "/wr-1m.txt", 128000, 8)
 }
 
-func TestWrite10MBytes(t *testing.T, fs FileSystem) {
-	TestWriteNBytesIter(t, fs, "/wr-10m.txt", 128000, 80)
+func TestWrite10MBytes64Kx160(t *testing.T, fs FileSystem) {
+	TestWriteNBytesIter(t, fs, "/wr-10m-64Kx160.txt", 64 * 1000, 160)
+}
+
+func TestWrite10MBytes128Kx80(t *testing.T, fs FileSystem) {
+	TestWriteNBytesIter(t, fs, "/wr-10m-128Kx80.txt", 128 * 1000, 80)
+}
+
+func TestWrite10MBytes256Kx40(t *testing.T, fs FileSystem) {
+	TestWriteNBytesIter(t, fs, "/wr-10m-256Kx40.txt", 256 * 1000, 40)
+}
+
+func TestWrite10MBytes512Kx20(t *testing.T, fs FileSystem) {
+	TestWriteNBytesIter(t, fs, "/wr-10m-512Kx20.txt", 512 * 1000, 20)
+}
+
+func TestWrite10MBytes1Mx10(t *testing.T, fs FileSystem) {
+	TestWriteNBytesIter(t, fs, "/wr-10m-1Mx10.txt", 1000 * 1000, 10)
+}
+
+func TestWrite10MBytes10Mx1(t *testing.T, fs FileSystem) {
+	TestWriteNBytesIter(t, fs, "/wr-10m-10Mx1.txt", 10 * 1000 * 1000, 1)
 }
 
 // ===== BEGIN ITERATIVE WRITE & READ CHUNK TESTS EXPANDING FILES =====
